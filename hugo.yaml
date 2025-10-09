@@ -1,7 +1,6 @@
-# TODO: Move this into a k8s file.
-baseURL: https://SumerianSalad.com/
+baseURL: https://CuratedForest.com/
 languageCode: en-us
-title: Sumerian Salad
+title: Curated Forest
 theme:
   - github.com/onweru/compose
 module:
