@@ -1,0 +1,11 @@
+# TODO: Move this into a k8s file.
+baseURL: https://SumerianSalad.com/
+languageCode: en-us
+title: Sumerian Salad
+theme:
+  - github.com/onweru/compose
+module:
+  imports:
+    - path: github.com/lkhrs/hugo-dark-visitors
+    #- path: github.com/adityatelange/hugo-PaperMod
+    - path: github.com/onweru/compose
