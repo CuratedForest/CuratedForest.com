@@ -2,7 +2,15 @@
 There are TONs of ways to write automations in Home Assistant, and I've tried most of them! Unfortunately the majority of them are brittle or require too much maintenance. After lots of experimenting and a career working with software, these are my suggestions as far as how features in Home Assistant should be written, as well as the functions I currently have written. 
 
 ## Acceptance Criteria
-The most maintainable, scalable, and dynamic approach to handling automations in Home Assistant is to utilize labels and areas/floors together. The idea is that you should be able to configure a device's area and it's entities' labels, and _everything should just **work**._ If an approach can't support this, it's discarded. 
+The most maintainable, scalable, and dynamic approach to handling automations in Home Assistant is to utilize labels and areas/floors together. The idea is that you should be able to configure a device's area and it's entities' labels, and _everything should just **work**._ If an approach can't support this, it's discarded.
+
+> [!WARNING] Labels Are Case-Sensitive
+> All label matching in this system is **case-sensitive**. The standard practice is:
+> - **Feature names** should be capitalized (e.g. `Screen`, `Fan`, `Night`) — they must match exactly between the grouping label (`Area Leader: Screen`, `Area Follower: Screen`) and all optional labels (`Area Screen Only: Enable`, `Area Screen Decreasing: True`).
+> - **Boolean values** must be capitalized: `True` and `False` (not `true` / `false`). The matchers look for exactly `True` / `False`.
+> - **Label keywords** (`Toggle`, `Invert`, `Increasing`, `Decreasing`, `Only`, `Between`, `Not Between`, `Enable`, `Disable`, `Script`, `Arg`, `Error Mode`) are also case-sensitive and should be capitalized as shown in the examples throughout this document.
+> 
+> A label like `Area Screen Decreasing: true` (lowercase `t`) will **not** be detected — it must be `Area Screen Decreasing: True`.
 
 ### Leader and Follower Pattern
 The pattern I've found to support that the best is that of labeling leader and followers in an area. That is, one or more entities are identified as a "leader" for the function in it's area or floor. When that leader's state changes, a script runs and similarly updates the labeled followers in the area or floor of the leader who's state changed.
@@ -44,7 +52,8 @@ One of the limitations of blueprints are that you can only have 1 object per blu
 	- This is where all of the leader logic goes. It calls the follower script when the `leaders` attribute changes.
 	- It detects the last updated timestamp and checks for leaders that have updated since then.
 	- Reads pre-computed `enabled` and `scope` directly from `trigger.to_state.attributes.leaders[entity_id].features[feature_name]` - no label re-evaluation at runtime.
-	- Applies runtime-only filters (Only, Between / Not Between, Increasing / Decreasing) before deciding whether to call the follower script for each feature. `Between`/`Not Between` use `now()` which is only available at trigger time. For `Increasing`/`Decreasing`, both `current_value` and `previous_value` are read from `trigger.to_state.attributes.leaders[entity_id]` - the sensor's trigger-time snapshot - rather than from `states()` live state. This ensures direction detection is consistent even when the entity changes again before the automation finishes evaluating.
+	- Applies runtime-only filters (Only, Between / Not Between) before deciding whether to call the follower script for each feature. `Between`/`Not Between` use `now()` which is only available at trigger time.
+	- Direction (`Increasing`/`Decreasing`) is **evaluated in the template sensor** (not the automation). The sensor computes `enabled` based on numeric current vs previous value and stores it in the `leaders` attribute. The automation simply reads the pre-computed `enabled` value.
 	- Use `mode: queued` so that rapid or simultaneous leader state changes are all processed sequentially.
 - Labeled Feature Follower (Script)
 	- This is ran by the automation, but because the leader values are passed into the script, you can also run this by hand against individual followers (useful for testing).
@@ -52,6 +61,7 @@ One of the limitations of blueprints are that you can only have 1 object per blu
 		- follower_entity_id (mandatory)
 		- feature (mandatory)
 		- leader_enabled boolean (mandatory)
+		- toggle boolean (optional, default false) — when true the follower toggles its current state; passed automatically by the leader when `Toggle: true` is detected, or can be set manually for testing
 		- leader that triggered (optional)
 		- scope (area, floor, none) (optional)
 		- scope_id - the resolved area_id or floor_id that corresponds to the scope (optional, passed automatically by the automation)
@@ -125,19 +135,23 @@ FEATURE_NAME_HERE: Is the user defined feature name.
 These define additional functionality that can optionally be applied via labels. They will all roughly be formatted like `FEATURE_NAME_HERE LABEL_FUNCTION: variables/options/args`
 
 ``` Examples
-FEATURE_NAME_HERE (Enable|Disable): A_STRING_HERE
-FEATURE_NAME_HERE Only: (Disable|Enable)
-FEATURE_NAME_HERE Invert: (False|True)
-FEATURE_NAME_HERE Decreasing|Increasing: True
-FEATURE_NAME_HERE (|Not )Between: <a_24_h_format_time>:<a24_h_format_time>
+(Area |Floor |)FEATURE_NAME_HERE (Enable|Disable): A_STRING_HERE
+(Area |Floor |)FEATURE_NAME_HERE Only: (Disable|Enable)
+(Area |Floor |)FEATURE_NAME_HERE Invert: (False|True)
+(Area |Floor |)FEATURE_NAME_HERE Decreasing|Increasing: True
+(Area |Floor |)FEATURE_NAME_HERE (|Not )Between: <a_24_h_format_time>:<a24_h_format_time>
+(Area |Floor |)FEATURE_NAME_HERE Toggle: True
 
-FEATURE_NAME_HERE (Enable|Disable) Script: script.NAME_OF_SCRIPT_TO_CALL
-FEATURE_NAME_HERE (Enable|Disable) Arg FIELD_NAME: %
-FEATURE_NAME_HERE Script: script.NAME_OF_SCRIPT_TO_CALL
-FEATURE_NAME_HERE Arg FIELD_NAME: %
+(Area |Floor |)FEATURE_NAME_HERE (Enable|Disable) Script: script.NAME_OF_SCRIPT_TO_CALL
+(Area |Floor |)FEATURE_NAME_HERE (Enable|Disable) Arg FIELD_NAME: %
+(Area |Floor |)FEATURE_NAME_HERE Script: script.NAME_OF_SCRIPT_TO_CALL
+(Area |Floor |)FEATURE_NAME_HERE Arg FIELD_NAME: %
 
-FEATURE_NAME_HERE Error Mode: (Silent|Log|Alert|Stop)
+(Area |Floor |)FEATURE_NAME_HERE Error Mode: (Silent|Log|Alert|Stop)
 ```
+
+> [!NOTE] Scope Prefix Required
+> All optional labels (Enable, Disable, Only, Invert, Between, Not Between, Increasing, Decreasing, Toggle, Script, Arg, Error Mode) **must include the same scope prefix as the grouping label**. If the entity has `Area Follower: Fan` or `Area Leader: Fan`, then all optional labels for that feature must start with `Area Fan:` — e.g. `Area Fan Toggle: true`, `Area Fan Only: Enable`, `Area Fan Enable: 75`. The bare feature name (without prefix) is still what gets passed to scripts via the `feature` field.
 Most of them apply to both leaders and followers with slightly different functionality.
 
 
@@ -150,8 +164,9 @@ The order here matches the evaluation order in the automation. This is helpful t
 | Enable \| Disable        | A_STRING_HERE<br><br>Arg required                   | When the leader's state matches A_STRING_HERE, the feature is triggered as Enabled and when it changes from the supplied value it triggers as disabled.                                                                                                                 | It does not trigger as disabled when the previous value doesn't match the feature.                                                                                                              |
 | Only                     | Enable\|Disable<br><br>Default: None/both           | Will only run followers when leader's trigger evaluates to "enabled"/on or "disabled"/off                                                                                                                                                                               |                                                                                                                                                                                                 |
 | Invert                   | True\|False<br><br>Default: False                   | If True will invert the leader_enabled value passed to the follower.                                                                                                                                                                                                    | Invert applied to followers modifies the action rather than trigger.                                                                                                                            |
-| Decreasing \| Increasing | True<br><br>Default: False                          | This should check the previous value and if it is decreasing or increasing and matches the label, trigger the feature.                                                                                                                                                  | It doesn't make sense to use this on a follower                                                                                                                                                 |
+| Decreasing \| Increasing | True<br><br>Default: False                          | Evaluated by the **Labeled Features State template sensor** (not the automation). The sensor compares the numeric `current_value` vs `previous_value` for the leader entity. `Increasing: True` → `enabled = (current > previous)`. `Decreasing: True` → `enabled = (current < previous)`. Both labels may be present; `enabled` is true if either condition matches. If either value is non-numeric or `previous_value` is empty (first update), `enabled = false`. **Direction takes precedence over `Enable:` / `Disable:` labels** — if a Direction label is present on a feature, any `Enable:` / `Disable:` labels for that feature are ignored when computing `enabled`. `Invert: True` is still applied after Direction evaluation. | It doesn't make sense to use this on a follower. Direction is fully resolved in the sensor; the automation reads the pre-computed `enabled` value. |
 | (\|Not )Between          | (<24_h_fmt>\|-):(<24_h_fmt>\|-)<br><br>Arg required | Will only trigger/run if the current time matches the one of the provided Between labels.                                                                                                                                                                               | An entity can have more than one Between label. They will all be detected and evaluated with an or.                                                                                             |
+| Toggle                   | true<br><br>Default: false                          | When present on a leader, bypasses the Only / Increasing / Decreasing filters (Between / Not Between still apply). Passes `toggle: true` to every dispatched follower so they toggle their current state instead of setting a specific value. Invert on the leader still applies to `leader_enabled` but the follower ignores `leader_enabled` when toggling. | Takes priority over Only / Increasing / Decreasing on the leader. Between still gates the trigger. Per-override (`FEATURE_NAME Toggle: true`) is also supported when feature overrides are active. |
 | (Enable\|Disable) Script | NAME_OF_SCRIPT_TO_CALL<br><br>Arg required          | Calls the named script with arguments provided from labels. If it starts with `automaton.`  or `scene.` simply trigger the automation and don't pass any variables.                                                                                                     |                                                                                                                                                                                                 |
 | Error Mode               | (Silent\|Log\|Alert\|Stop)                          | - Silent: Silently skips errors<br><br>- Log: Logs errors to the Home Assistant logs and continues<br><br>- Alert: Raises an alert and continues (note: alerting hasn't been started yet, so this should be a stub)<br><br>- Stop: Stop running the automation / script<br><br>The Stop/Continue distinction is built on HA's native `continue_on_error: true` action flag as the foundation. Silent/Log/Alert tiers add notification and logging behavior on top of this. | The main place it shows up in the Leader is handling how failed calls to followers process. It is also supported on the follower script itself via `FEATURE_NAME error mode:` labels, where it controls how script call errors are handled. |
 
@@ -168,6 +183,7 @@ The order here matches the evaluation order in the automation. This is helpful t
 | Only                                | Enable\|Disable<br><br>Default: None/Both                                                                        | Will only run if the passed leader_enabled value matches the provided argument.                                                                                                                                                | When applied to both leaders and followers, both filters apply.                                                                                           |
 | Invert                              | True\|False<br><br>Default: False                                                                                | If True will invert the follower's action. If the follower is passed leader_enable: on, then the follower will turn off.                                                                                                       | Invert applied to leaders modifies the trigger instead.                                                                                                   |
 | (\|Not )Between                     | (<24_h_fmt>\|-):(<24_h_fmt>\|-)<br><br>Arg required                                                              | Will only trigger/run if the current time matches the one of the provided Between labels. An open end is represented with a -                                                                                                  | An entity can have more than one Between label. They will all be detected and evaluated with an or.                                                       |
+| Toggle                              | true<br><br>Default: false                                                                                       | When present on a follower (or when `toggle: true` is passed in from the leader), the follower toggles its current state instead of setting a specific value. **Invert is ignored** in toggle mode (raw current state is read). **Direct-value labels** (`Enable:`, `Disable:`, bare `FEATURE:`) are **skipped**. Enable/Disable/Default Scripts still run and receive `toggle: true` as an additional std field. For domains without toggle support (`select`, `number`, `text`, `scene`, `vacuum`, etc.) Error Mode handling applies and execution continues or stops per the configured mode. `media_player` falls back to mute-toggle if on/off is not supported. `lock` uses `lock.lock`/`lock.unlock` based on current state. Only / Between still gate the follower normally. | `toggle` is also a std field passed to scripts — scripts that declare a `toggle` field will receive it automatically. |
 | (Enable\|Disable) Script            | NAME_OF_SCRIPT_TO_CALL<br><br>Arg required                                                                       | Calls the named script with arguments provided from labels. If it starts with `automation.` or `scene.` simply trigger the automation and don't pass any variables<br><br>See the more detailed script section below for more. | A feature can only have one script, but leaders and followers can have multiple features.<br><br>Please see detailed script section for trigger behavior! |
 | Script                              | NAME_OF_SCRIPT_TO_CALL<br><br>Arg required                                                                       | Similar to the above script functionality, the "Default" option.<br><br>See detailed script section for a complete description.                                                                                                |                                                                                                                                                           |
 | ( \|Enable\|Disable) Arg FIELD_NAME | % <br><br>Where % is the value to pass into the script's field.<br><br>Also see substitutions for dynamic values | Adds the value (after being substituted if it's dynamic) to the script call paired with FIELD_NAME.                                                                                                                            |                                                                                                                                                           |
@@ -228,6 +244,7 @@ Scripts by themselves are helpful, but what really makes them shine is when they
 		- follower_entity_id
 		- leader_entity_id
 		- leader_enabled
+		- toggle (boolean — true when the follower is in toggle mode; scripts that declare a `toggle` field receive it automatically)
 - Use these args as fields in the call to the script.
 
 ### Missing fields & Error Mode
