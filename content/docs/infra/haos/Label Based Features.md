@@ -36,11 +36,16 @@ One of the limitations of blueprints are that you can only have 1 object per blu
 - Labeled Feature Leaders (Template Sensor)
 	- Tracks timestamps on all the entities with the "Feature Leader" label.
 	- This also allows for tracking the previous state of the entities.
-	- It evaluates the leader labels of the changed entities, and then stores the possibly modified value to leaders and features attributes for consumption later in the pipeline. 
-- Labeled Feature Leader (Automation)
-	- This is where all of the leader logic goes. It calls the trigger script when the timestamp attribute changes. 
-	- It detects the last updated timestamp and checks for leaders that have updated since then. 
-	- State changes that trigger the automation should be evaluated and filtered out here. It should only call the trigger script if these evaluate to it being needed. 
+	- Maintains two attributes on the sensor: `leaders` and `features`.
+		- `leaders` - keyed by entity ID: `{ current_value, previous_value, last_changed_timestamp, features }`. The nested `features` dict maps each feature name the entity leads to its pre-computed `{ enabled (post-invert), scope }`. Pre-computing here means the automation never needs to re-evaluate Enable/Disable/Invert labels at trigger time.
+		- `features` - flattened view keyed by feature name with the most recently changed leader's data. Used by argument substitutions (`[features].[feature_name].[enabled]`) in script calls.
+	-  `unique_id` to enable entity registry features, UI customization (rename, disable), and stable entity identity across reloads.
+- Labeled Feature Leaders (Automation)
+	- This is where all of the leader logic goes. It calls the follower script when the `leaders` attribute changes.
+	- It detects the last updated timestamp and checks for leaders that have updated since then.
+	- Reads pre-computed `enabled` and `scope` directly from `trigger.to_state.attributes.leaders[entity_id].features[feature_name]` - no label re-evaluation at runtime.
+	- Applies runtime-only filters (Only, Between / Not Between, Increasing / Decreasing) before deciding whether to call the follower script for each feature. `Between`/`Not Between` use `now()` which is only available at trigger time. For `Increasing`/`Decreasing`, both `current_value` and `previous_value` are read from `trigger.to_state.attributes.leaders[entity_id]` - the sensor's trigger-time snapshot - rather than from `states()` live state. This ensures direction detection is consistent even when the entity changes again before the automation finishes evaluating.
+	- Use `mode: queued` so that rapid or simultaneous leader state changes are all processed sequentially.
 - Labeled Feature Follower (Script)
 	- This is ran by the automation, but because the leader values are passed into the script, you can also run this by hand against individual followers (useful for testing).
 	- It accepts:
@@ -49,6 +54,7 @@ One of the limitations of blueprints are that you can only have 1 object per blu
 		- leader_enabled boolean (mandatory)
 		- leader that triggered (optional)
 		- scope (area, floor, none) (optional)
+		- scope_id - the resolved area_id or floor_id that corresponds to the scope (optional, passed automatically by the automation)
 	- Then evaluates the follower labels and sets the follower to the appropriate value only if it's different from what is set currently.
 - Labeled Feature Button (Script)
 	- This contains all the logic for running media and button based features.
@@ -147,7 +153,7 @@ The order here matches the evaluation order in the automation. This is helpful t
 | Decreasing \| Increasing | True<br><br>Default: False                          | This should check the previous value and if it is decreasing or increasing and matches the label, trigger the feature.                                                                                                                                                  | It doesn't make sense to use this on a follower                                                                                                                                                 |
 | (\|Not )Between          | (<24_h_fmt>\|-):(<24_h_fmt>\|-)<br><br>Arg required | Will only trigger/run if the current time matches the one of the provided Between labels.                                                                                                                                                                               | An entity can have more than one Between label. They will all be detected and evaluated with an or.                                                                                             |
 | (Enable\|Disable) Script | NAME_OF_SCRIPT_TO_CALL<br><br>Arg required          | Calls the named script with arguments provided from labels. If it starts with `automaton.`  or `scene.` simply trigger the automation and don't pass any variables.                                                                                                     |                                                                                                                                                                                                 |
-| Error Mode               | (Silent\|Log\|Alert\|Stop)                          | - Silent: Silently skips errors<br><br>- Log: Logs errors to the Home Assistant logs and continues<br><br>- Alert: Raises an alert and continues (note: alerting hasn't been started yet, so this should be a stub)<br><br>- Stop: Stop running the automation / script | These are primarily useful in the Leader automation, so not (yet) implemented for followers.<br><br>The main place it shows up in the Leader is handling how failed calls to followers process. |
+| Error Mode               | (Silent\|Log\|Alert\|Stop)                          | - Silent: Silently skips errors<br><br>- Log: Logs errors to the Home Assistant logs and continues<br><br>- Alert: Raises an alert and continues (note: alerting hasn't been started yet, so this should be a stub)<br><br>- Stop: Stop running the automation / script<br><br>The Stop/Continue distinction is built on HA's native `continue_on_error: true` action flag as the foundation. Silent/Log/Alert tiers add notification and logging behavior on top of this. | The main place it shows up in the Leader is handling how failed calls to followers process. It is also supported on the follower script itself via `FEATURE_NAME error mode:` labels, where it controls how script call errors are handled. |
 
 > [!NOTE] Note
 > FEATURE_NAME (Enable|Disable): A_STRING
@@ -165,6 +171,8 @@ The order here matches the evaluation order in the automation. This is helpful t
 | (Enable\|Disable) Script            | NAME_OF_SCRIPT_TO_CALL<br><br>Arg required                                                                       | Calls the named script with arguments provided from labels. If it starts with `automation.` or `scene.` simply trigger the automation and don't pass any variables<br><br>See the more detailed script section below for more. | A feature can only have one script, but leaders and followers can have multiple features.<br><br>Please see detailed script section for trigger behavior! |
 | Script                              | NAME_OF_SCRIPT_TO_CALL<br><br>Arg required                                                                       | Similar to the above script functionality, the "Default" option.<br><br>See detailed script section for a complete description.                                                                                                |                                                                                                                                                           |
 | ( \|Enable\|Disable) Arg FIELD_NAME | % <br><br>Where % is the value to pass into the script's field.<br><br>Also see substitutions for dynamic values | Adds the value (after being substituted if it's dynamic) to the script call paired with FIELD_NAME.                                                                                                                            |                                                                                                                                                           |
+| Error Mode               | (Silent\|Log\|Alert\|Stop)                          | Controls how errors from script calls are handled on the follower. Mirrors the Leader Error Mode behavior: Silent (continue silently), Log (log to HA logs), Alert (send alert), Stop (propagate error and halt).              | Applied as `FEATURE_NAME Error Mode: stop` etc. on the follower entity. Overrides the Leader-level error mode for that specific follower's script calls.  |
+| (no Enable\|Disable)     | A_STRING_HERE                                        | `FEATURE_NAME: value` — a fallback value label with no Enable/Disable qualifier. Acts as both an enable and disable value (sets the follower to this value regardless of leader_enabled direction). Overridden by explicit `Enable:` or `Disable:` labels if present. | Primarily seen in button/default-script patterns carried over to followers. Prefer explicit `Enable:` / `Disable:` labels when different values are needed per direction. |
 
 
 ## Automation Labels
@@ -172,7 +180,10 @@ Labels can be used to change the way the automation runs too! Right now this onl
 ```
 Error Mode: (Silent|Log|Alert|Stop)
 ```
-is applied to the Labeled Leader Automation, it sets the default Error Mode. It will be overridden by Error Mode labels on a Feature at the Leader level. 
+is applied to the Labeled Leader Automation, it sets the default Error Mode. It will be overridden by Error Mode labels on a Feature at the Leader level.
+
+> [!NOTE] Implementation Note
+> The Stop/Continue distinction in Error Mode is built on HA's native `continue_on_error: true` action flag. In the current implementation, `continue_on_error: true` is used for all error modes (HA YAML does not support templating this flag dynamically). For `Stop` mode, the error is captured and a manual `stop: error: true` is called immediately after - achieving the same halting behavior while also allowing any log/alert actions to execute first. For `Silent`/`Log`/`Alert` modes execution continues after the error is handled. The Silent/Log/Alert tiers layer on top by suppressing, logging, or notifying about the error accordingly.
 
 ---
 
@@ -227,7 +238,7 @@ One big thing to be aware of when using scripts specifically is how the argument
 
 Format:
 ```
-FEATURE_NAME_HERE (Enable|Disable) Arg FIELD_NAME: [leaders].[feature_leader].[value]
+FEATURE_NAME_HERE (Enable|Disable) Arg FIELD_NAME: [leaders].[feature_leader].[current_value]
 FEATURE_NAME_HERE (Enable|Disable) Arg FIELD_NAME: [features].[feature_name].[enabled]
 ```
 
@@ -235,7 +246,7 @@ When evaluating the value to pass:
 - Get the relevant attribute from Labeled Features State. Currently I only reference `(leaders|features)` but other attributes can be added and used. 
 - Parse that attribute as JSON
 - Get the `(feature_leader|feature_name)` object. When those values are used they are expected to return the feature_leader entity_id and feature_name being actually being used. 
-- Get the `(value|enabled)` result. Again, these are what I currently reference, other fields could be utilized or added. 
+- Get the `(current_value|enabled)` result. Again, these are what I currently reference, other fields could be utilized or added. For `leaders`, the available fields are `current_value`, `previous_value`, `last_changed_timestamp`, and the nested `features` dict. For `features`, the available fields are `leader_entity_id`, `value`, `enabled`, and `timestamp`.
 - Assign this as the value to pass into the script.
 
 > [!NOTE] TODO
@@ -269,6 +280,8 @@ Some use cases don't make sense for an environment based trigger but instead are
 
 
 ### Light Functions
+The `labeled_feature_follower` script supports the `light` domain in its direct-value path. When a value label such as `FEATURE_NAME enable: 75` is present on a light entity, it calls `light.turn_on` with `brightness_pct` set to that value (clamped to 0–100). Lights without a numeric value label fall through to the turn_on/turn_off fallback path.
+
 - light on/off 
 - light up
 - light down
@@ -281,16 +294,19 @@ There are a couple additional scripts that are used to support night time / slee
 
 I utilize these by checking for the conditions in the button scripts. First by seeing if media is playing, then calling the relevant media / light functions, and if it's night mode the sleep timer reset or cancel script.
 
-The reset sleep timer script is a single run script that:
-- waits the given amount of time (15 minutes by default)
-- decreases the volume by half 
-- wait 1 minute 
-- mute volume
-- go back 30 seconds 20 times (10 minutes)
-- unmute volume
-- restore to original value
-- if canceled (not sure if this is possible)
-	- restore to original value
+The sleep timeout script (`script.labeled_feature_sleep_timeout`) uses `mode: restart`, so calling it again always resets the full countdown from zero. It runs the following steps:
+
+1. Capture original volumes for all area media players.
+2. Wait the configured timeout (default 15 minutes).
+4. Halve the volume on every area media player.
+5. Wait 1 minute.
+6. Mute all area media players.
+7. Wait 1 minute.
+8. Seek back 30 seconds every 30 seconds × 20 iterations (≈ 10 minutes) — keeps playback position near where the user fell asleep.
+9. Unmute all area media players.
+10. Restore each media player to its original volume level.
+
+The Sleep Timeout Cancel Restore automation watches for `script.labeled_feature_sleep_timeout` to transition from `on` to `off`. If `trigger.from_state.attributes.original_volumes` is non-empty (i.e. the script was stopped before normal completion), it reads the stored volumes directly from the script's prior state attribute, unmutes all area players, and restores each to its original volume level. No `input_text` helper is required - volumes are stored entirely in the script's `original_volumes` top-level variable attribute while it runs.
 
 > [!NOTE] Warning
 Because only 1 instance of the script can run at once, this means you'll need to create a separate automation/blueprint/labels for each user who wants to utilize the sleep functionality. It'd be great to find a way to eliminate this pain point.
@@ -305,11 +321,11 @@ Because only 1 instance of the script can run at once, this means you'll need to
 	- (hold) volume down & reset sleep timer
 
 - Not Playing
-	- lights off, background music off & cancel sleep timer 
+	- lights off & cancel sleep timer
 	- play & reset sleep timer
-	- (double) select next media player
-	- (double) select previous media player 
-	- (hold) fan on/off
+	- (double) previous track
+	- (double) next track
+	- (hold) Ad-Toggle
 	- (hold) night mode on/off
 
 
