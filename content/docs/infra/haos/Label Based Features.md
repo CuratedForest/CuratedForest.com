@@ -6,9 +6,9 @@ The most maintainable, scalable, and dynamic approach to handling automations in
 
 > [!WARNING] Labels Are Case-Sensitive
 > All label matching in this system is **case-sensitive**. The standard practice is:
-> - **Feature names** should be capitalized (e.g. `Screen`, `Fan`, `Night`) — they must match exactly between the grouping label (`Area Leader: Screen`, `Area Follower: Screen`) and all optional labels (`Area Screen Only: Enable`, `Area Screen Decreasing: True`).
+> - **Feature names** should be capitalized (e.g. `Screen`, `Fan`, `Night`, `Shoot Zone`, `Root Zone`, `Manifest`) — they must match exactly between the grouping label (`Area Leader: Screen`, `Area Follower: Screen`, `Area Provides: Audio Mode`) and all optional labels (`Area Screen Only: Enable`, `Area Screen Decreasing: True`, `Area Provides Audio Mode Initial: All`).
 > - **Boolean values** must be capitalized: `True` and `False` (not `true` / `false`). The matchers look for exactly `True` / `False`.
-> - **Label keywords** (`Toggle`, `Invert`, `Increasing`, `Decreasing`, `Only`, `Between`, `Not Between`, `Enable`, `Disable`, `Script`, `Arg`, `Error Mode`) are also case-sensitive and should be capitalized as shown in the examples throughout this document.
+> - **Label keywords** (`Toggle`, `Invert`, `Increasing`, `Decreasing`, `Only`, `Between`, `Not Between`, `Enable`, `Disable`, `Script`, `Arg`, `Error Mode`, `Provides`, `Provides Option`, `Provides Options`, `Provides Initial`, `Provides Icon`, `Provides Component`, `Provides Min`, `Provides Max`, `Provides Step`, `Provides Unit`, `Provides Device Class`, `Provides Exclude`) are also case-sensitive and should be capitalized as shown in the examples throughout this document.
 > 
 > A label like `Area Screen Decreasing: true` (lowercase `t`) will **not** be detected — it must be `Area Screen Decreasing: True`.
 
@@ -41,19 +41,22 @@ It may also make sense to just convert this logic to python and host it on HACS 
 
 ### What blueprints are necessary 
 One of the limitations of blueprints are that you can only have 1 object per blueprint. That means in order to get this functionality working, you need to install blueprints for the following:
-- Labeled Feature Leaders (Template Sensor)
+- Labeled Feature State (Template Sensor)
 	- Tracks timestamps on all the entities with the "Feature Leader" label.
 	- This also allows for tracking the previous state of the entities.
-	- Maintains two attributes on the sensor: `leaders` and `features`.
+	- Maintains these attributes on the sensor: `feature_meta`, `leaders`, `features`.
+		- `feature_meta` - single source of truth catalog of the built-in generic features. Each entry is keyed by canonical Feature Name and carries `{ domain, kind, domain_label }`. `domain` is the HA domain used as a fallback target pool (e.g. `media_player`, `light`, `fan`); `kind` is the internal action key consumed by `labeled_feature_generics`' `choose:` block; `domain_label` is the human-readable provider grouping consumed by the `Provides: <DomainLabel>` entity-context shorthand (so a single `Area Provides: Media Player` opts an entity into every media feature). Adding a new domain grouping is a one-line edit here.
 		- `leaders` - keyed by entity ID: `{ current_value, previous_value, last_changed_timestamp, features }`. The nested `features` dict maps each feature name the entity leads to its pre-computed `{ enabled (post-invert), scope }`. Pre-computing here means the automation never needs to re-evaluate Enable/Disable/Invert labels at trigger time.
 		- `features` - flattened view keyed by feature name with the most recently changed leader's data. Used by argument substitutions (`[features].[feature_name].[enabled]`) in script calls.
+		- **Note:** the `areas` attribute was removed. Area scope/feature resolution depends on the label/area/floor *registries*, and state-based template sensors do not observe registry mutations (label add/remove on an area never triggers a re-render of `state` or attributes). The entire `(Area |Floor |)Provides: <F>` parsing + Manifest + floor-dedup pipeline has been moved into `automation.labeled_feature_areas`, which now triggers directly on `label_registry_updated` / `area_registry_updated` / `floor_registry_updated` / `homeassistant.start`. See **Area Based Features** below.
 	-  `unique_id` to enable entity registry features, UI customization (rename, disable), and stable entity identity across reloads.
 - Labeled Feature Leaders (Automation)
 	- This is where all of the leader logic goes. It calls the follower script when the `leaders` attribute changes.
 	- It detects the last updated timestamp and checks for leaders that have updated since then.
 	- Reads pre-computed `enabled` and `scope` directly from `trigger.to_state.attributes.leaders[entity_id].features[feature_name]` - no label re-evaluation at runtime.
-	- Applies runtime-only filters (Only, Between / Not Between) before deciding whether to call the follower script for each feature. `Between`/`Not Between` use `now()` which is only available at trigger time.
+	- Applies runtime-only filters (Only, Between / Not Between) before running **The Dispatch Loop** (see below) against the leader entity's labels for each detected feature. `Between`/`Not Between` use `now()` which is only available at trigger time.
 	- Direction (`Increasing`/`Decreasing`) is **evaluated in the template sensor** (not the automation). The sensor computes `enabled` based on numeric current vs previous value and stores it in the `leaders` attribute. The automation simply reads the pre-computed `enabled` value.
+	- The implicit `feature` action item produced by the dispatch loop fans out to followers — for each follower resolved by the feature's `(Area |Floor |)Follower: <F>` / `(Area |Floor |)Provides: <DomainLabel>` labels, the loop calls `script.labeled_feature_follower` once.
 	- Use `mode: queued` so that rapid or simultaneous leader state changes are all processed sequentially.
 - Labeled Feature Follower (Script)
 	- This is ran by the automation, but because the leader values are passed into the script, you can also run this by hand against individual followers (useful for testing).
@@ -65,12 +68,34 @@ One of the limitations of blueprints are that you can only have 1 object per blu
 		- leader that triggered (optional)
 		- scope (area, floor, none) (optional)
 		- scope_id - the resolved area_id or floor_id that corresponds to the scope (optional, passed automatically by the automation)
-	- Then evaluates the follower labels and sets the follower to the appropriate value only if it's different from what is set currently.
-- Labeled Feature Button (Script)
-	- This contains all the logic for running media and button based features.
-	- Because of the limitations of blueprints, it makes sense to have a single shared script rather than many little ones... Without this limitation I'd go for a file / script per function.
-	- The desired functionality should be passed as "feature".
-	
+	- Runs **The Dispatch Loop** (see below) against the follower entity's labels for the named feature. The implicit `feature` action item on a follower performs the direct entity action (`light.turn_on`, `select.select_option`, the toggle path, etc.) only when its value differs from the entity's current state.
+- Labeled Feature Generics (Script)
+	- A *generic feature dispatcher* — it knows nothing about specific button devices. Given a generic feature name (e.g. `Lights Off`, `Volume Up`, `Fan On`, `Night`, …) plus a scope it resolves the right entities in the scope and runs the correct service call against them.
+	- Resolution order: explicit `(Area |Floor |)Follower: <Feature>` labels first, falling back to a per-feature default domain (e.g. `light` for `Lights Off`). Both paths honor `<scope-prefix><Feature> Exclude: True` to opt entities out.
+	- See the **Labeled Feature Generics** section below for the full feature catalog, the resolution algorithm, and the `toggle` modifier behavior.
+- Per-device Button Mapping Scripts (e.g. `script.labeled_feature_somrig`)
+	- Translate a specific button-device family's raw event names (`1_short_release`, `2_double_press`, etc.) plus contextual state (e.g. whether media is currently playing) into one or more calls to `labeled_feature_generics`.
+	- One mapping script per button-device family. See the **Button Mapping Scripts** section below.
+- Labeled Feature Areas (Automation)
+	- Diffs the `label_map` attribute on `sensor.labeled_feature_areas_state` and dispatches creates / deletes to `script.labeled_feature_area`.
+	- Triggers on both `state` (`attribute: label_map`) and `homeassistant.start`. The start trigger re-publishes every current expected discovery payload so MQTT discovery survives a HA restart (idempotent because the discovery topics are retained).
+	- Diff algorithm: read `to_state.attributes.label_map` (and `from_state.attributes.label_map` on state triggers) — each entry keyed `<scope_id>||<label>` carries `{ scope_id, label, scope, component, declaring_area_id }`. `added = now - prev`, `removed = prev - now`; entries whose `component` changed show up in both (natural rename semantics). Both adds and removes are dispatched to `script.labeled_feature_area`; removes pass `delete: true` so the script — which owns canonical object_id naming — computes the right topic to retract.
+	- Removes run before adds so a component swap retracts the stale discovery topic before publishing the new one.
+	- See the **Area Based Features** section below.
+- Labeled Feature Area (Script)
+	- Per-feature dispatcher for the Area Based Features stack. Architecturally identical to `labeled_feature_generics` / `labeled_feature_somrig`: a big `choose:` block keyed on feature name. Each branch computes the canonical object_id for that feature, resolves the scope entity pool, and calls `script.labeled_feature_entities` to publish (or retract) the MQTT discovery payload(s).
+	- Accepts `delete: bool`. The flag is normalized into a top-level `_delete` variable once, and every `choose:` branch short-circuits on it *before* doing any feature-specific work (option-pool resolution, manifest entity enumeration, etc.). On `_delete = true` the branch calls `labeled_feature_entities` with `delete: true` and stops.
+	- Built-in branches: `Manifest` → `sensor.area_manifest_<area_id>`, `Shoot Zone` → `sensor.<scope_id>_vpd`, `Root Zone` → `number.<scope_id>_tracked_psi`.
+	- Default branch: any other `Provides: <FeatureName>` declared on an area becomes a `select.<scope_id>_<slug(F)>` whose options are the union of static `Provides Options: <F>: a|b|c` labels and entities labeled `Provides Option: <F>` resolved at the same scope.
+	- A `Provides <F> Component:` label on the area overrides the default component (`select`) — useful for one-off `number` / `switch` / `text` / `sensor` declarations. This is the *only* feature-specific knob the sensor sees; everything else is read fresh from `labels(declaring_area_id)` at dispatch.
+
+- Labeled Feature Entities (Script)
+	- Generic MQTT-discovery entity creator and retract helper. Builds a discovery payload from named fields (with a free-form `extra` dict for anything not enumerated) and publishes it retained.
+	- Lifecycle flags: `delete: true` publishes an empty retained payload to retract the entity. `create_mode` (`always` (default) | `if_missing` | `never`) controls when the discovery config is (re)published — `if_missing` skips when the entity already exists (state not in `unknown`/`unavailable`/`none`); `never` skips the discovery publish entirely so the call only tops up state/attributes.
+	- State / attributes seeding: `initialize_mode` (controls `initial_state`) and `attributes_mode` (controls `initial_attributes`) both take `set_if_missing` (default) | `always` | `never`.
+	- `component` is constrained to HA's supported MQTT discovery components (a closed dropdown selector); see the [MQTT discovery topic](https://www.home-assistant.io/integrations/mqtt/#discovery-topic) reference for the canonical list.
+	- Used by `labeled_feature_area` (and any future area-feature dispatcher). Can also be called directly to one-shot create or retract any discovery entity.
+
 ---
 
 # Features & Labels
@@ -96,6 +121,15 @@ But when followers need to reference more than one state or otherwise have compl
 - Whole Home Audio 
   Un-mutes audio when presence is detected in a room.
   Set's snapclient's Stream selection based on mode.
+
+- Per-area / per-floor selectors
+  An `Area Provides: Audio Mode` label on the kitchen area auto-creates `select.kitchen_audio_mode` with options pulled from media players in the kitchen (or static options declared by `Area Provides Options: Audio Mode: All|None|Area Presence`). The same label on every area on the first floor — but with the `Floor Provides:` prefix — creates a single `select.first_floor_audio_mode` (deduped by floor scope).
+
+- Per-area calibrated values
+  An `Area Provides: <ProbeName> Component: number` label and `Area Provides <ProbeName> Min: 0` / `Max: 100` / `Step: 0.1` labels on the area generate a number entity for the user to dial in a calibration target without writing any YAML.
+
+- VPD and tracked PSI for grow spaces
+  Tagging an area `Area Provides: Shoot Zone` auto-creates `sensor.<area_id>_vpd` (Antoine-equation, pulls temp + humidity sensors from the area). `Area Provides: Root Zone` creates `number.<area_id>_tracked_psi` (set-if-missing initial 0, optimistic, 0–2000 range).
 
 ## Label Placement
 
@@ -131,6 +165,140 @@ FEATURE_NAME_HERE: Is the user defined feature name.
 
 
 ---
+## Provides Labels
+`Provides:` is a single concept that means two different things depending on
+where the label lives — and they share a name on purpose, so the system
+ends up with one consistent vocabulary instead of two.
+
+| Where label lives | What it means | Example |
+|---|---|---|
+| On an **entity** | "This entity provides feature X" — adds it to the follower set for every generic feature in X's catalog (Leader/Follower, Generics, Somrig) | `Provides: Media Player` on `media_player.tv_room_audio` |
+| On an **area** | "This area provides feature X" — generates an MQTT-discovery entity for X in that area's scope (Area Based Features) | `Area Provides: Audio Mode` on the `kitchen` area |
+
+Both contexts use the same scope-prefix rules as everything else
+(`Area ` / `Floor ` / bare), and both honor `Exclude: True` for opt-outs.
+The template sensor distinguishes the two contexts by where the label was
+found: `labels(<entity>)` vs `labels(<area_id>)`, so there is no collision
+risk between provider category names (Media Player, Light, Fan…) and
+area-feature names (Audio Mode, Shoot Zone, Root Zone…).
+
+> ⚠️ **Disambiguation is by location, not by name.** The same string
+> (`Provides: Media Player`) is legal in *both* contexts and means
+> different things depending on where it lives:
+>
+> - On an **entity** — entity-context. The label is a domain-grouping
+>   shorthand only; it **never** generates an MQTT-discovery entity. It
+>   opts the entity into every generic feature whose `domain_label`
+>   matches (see the resolution algorithm below).
+> - On an **area** — area-context. The label **always** generates an
+>   MQTT-discovery entity for that area (the whole point of the Area
+>   Based Features stack). `Provides: Media Player` on `area.bedroom_main`
+>   creates `select.bedroom_main_media_player` (an area-scope dropdown of
+>   the media players in that area). This is intentional — even though
+>   the name overlaps with the domain-grouping shorthand, when the label
+>   is on an area it is unambiguously an area-feature declaration.
+>
+> If you want a domain-grouping name (e.g. `Media Player`) to *not* turn
+> into an area-scope select when applied to an area, simply don't put it
+> on the area. The two namespaces are intentionally separate by location.
+
+### Entity-context: domain provider grouping
+When `Provides:` lives on an entity, the consumer scripts treat it as a
+shorthand for "this entity participates in every generic feature whose
+domain matches this label." There is no separate catalog attribute on the
+state sensor — each generic feature carries its own `domain_label` in
+`labeled_feature_generics`' `feature_meta` lookup, and that label is the
+single thing the resolver looks up.
+
+| Provider label | Implicit domain | Features it opts the entity into |
+|---|---|---|
+| `Provides: Media Player` | `media_player` | `Media Toggle`, `Media Play`, `Media Pause`, `Media Next`, `Media Previous`, `Media Seek Back`, `Media Seek Forward`, `Volume Up`, `Volume Down` |
+| `Provides: Light` | `light` | `Lights On`, `Lights Off`, `Lights Up`, `Lights Down` |
+| `Provides: Fan` | `fan` | `Fan On`, `Fan Off`, `Fan Up`, `Fan Down` |
+
+Adding a new domain grouping is a single edit: set the `domain_label` field
+on every entry in `feature_meta` that belongs to it, and the
+`(Area |Floor |)Provides: <NewLabel>` shorthand starts working for those
+features — no template sensor changes required.
+
+#### Resolution algorithm (entity context)
+Every generic-feature consumer (`labeled_feature_generics`,
+`labeled_feature_somrig`'s `media_playing` check, the Provides-aware select
+branch in `labeled_feature_area`) runs the same **4-step Provides resolver**
+twice — once with the feature name itself, once with the feature's
+`domain_label` — and unions the results:
+
+```
+resolve_provides(label, scope_prefix):
+  try in order, return first non-empty:
+    1. label_entities(label)                              # exact (global)
+    2. label_entities(scope_prefix ~ 'Provides: ' ~ label)
+    3. label_entities(scope_prefix ~ 'Follower: ' ~ label)
+    4. label_entities(scope_prefix ~ 'Leader: '   ~ label)
+  Candidates 2–4 are filtered to the scope entity set;
+  candidate 1 is never scope-filtered.
+```
+
+The final `label_targets` for a feature dispatch is:
+
+1. `resolve_provides(<Feature>, scope_prefix)` ∪
+   `resolve_provides(<domain_label>, scope_prefix)` (when defined)
+2. Minus entities labeled `<Feature> Exclude: True`,
+   `<scope_prefix><Feature> Exclude: True`, and the same pair for
+   `<domain_label>` when defined.
+
+A single `Area Media Player Exclude: True` therefore opts an entity out of
+every media-player generic feature dispatched into the area (Volume, Seek,
+Play/Pause, Next/Prev) — the right thing for a "this speaker should never
+participate in the area's media controls" case.
+
+
+#### Example: configure a media player as an area follower
+Old way — one label per feature on the entity:
+```
+Area Follower: Media Toggle
+Area Follower: Media Pause
+Area Follower: Volume Up
+Area Follower: Volume Down
+Area Follower: Media Next
+Area Follower: Media Previous
+Area Follower: Media Seek Forward
+Area Follower: Media Seek Back
+```
+
+New way — one label, every media-player feature wired in:
+```
+Area Provides: Media Player
+```
+
+The same shape works for `Provides: Light` (replaces 4 `Lights *` follower
+labels), `Provides: Fan` (replaces 4 `Fan *` follower labels), etc.
+
+### Area-context: generated entities
+When `Provides:` lives on an area, it triggers the **Area Based Features**
+stack (see that section below for full details).
+
+The full set of area-context `Provides` labels is documented in the
+**Area Based Features → Label catalog** section below. In short:
+
+```
+(Area |Floor |)Provides: <FeatureName>                # create the feature
+(Area |Floor |)Provides Options: <F>: a|b|c           # static options for select
+(Area |Floor |)Provides <F> Component: <component>    # override default component
+(Area |Floor |)Provides <F> Initial: <value>          # initial state
+(Area |Floor |)Provides <F> Icon: mdi:foo             # icon override
+(Area |Floor |)Provides <F> Min/Max/Step/Unit/Device Class: <…>
+```
+
+…and on entities (to contribute to a select feature's option pool):
+
+```
+(Area |Floor |)Provides Option: <FeatureName>
+(Area |Floor |)Provides Option <FeatureName>: <custom_label>
+(Area |Floor |)Provides <FeatureName> Exclude: True
+```
+
+---
 ## Optional Labels
 These define additional functionality that can optionally be applied via labels. They will all roughly be formatted like `FEATURE_NAME_HERE LABEL_FUNCTION: variables/options/args`
 
@@ -141,6 +309,7 @@ These define additional functionality that can optionally be applied via labels.
 (Area |Floor |)FEATURE_NAME_HERE Decreasing|Increasing: True
 (Area |Floor |)FEATURE_NAME_HERE (|Not )Between: <a_24_h_format_time>:<a24_h_format_time>
 (Area |Floor |)FEATURE_NAME_HERE Toggle: True
+(Area |Floor |)FEATURE_NAME_HERE Exclude: True
 
 (Area |Floor |)FEATURE_NAME_HERE (Enable|Disable) Script: script.NAME_OF_SCRIPT_TO_CALL
 (Area |Floor |)FEATURE_NAME_HERE (Enable|Disable) Arg FIELD_NAME: %
@@ -155,40 +324,22 @@ These define additional functionality that can optionally be applied via labels.
 Most of them apply to both leaders and followers with slightly different functionality.
 
 
-### Leader Labels
-The order here matches the evaluation order in the automation. This is helpful to understand when considering how multiple labels will interact. 
-(Note: Double check this order is correct)
+### Shared label functions (Leaders and Followers)
+Most labels below apply to both leaders and followers with the same shape; rows that are leader-only or follower-only are flagged in the Notes column. **Scripts, Features, Args, and the Tag mechanic** are described in their own section under "Running Custom Scripts, Automations, and Scenes" → **The Dispatch Loop** below; this table is just the gate/filter labels.
 
 | Label Function           | Value / Arg                                         | Function                                                                                                                                                                                                                                                                | Notes                                                                                                                                                                                           |
 | ------------------------ | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Enable \| Disable        | A_STRING_HERE<br><br>Arg required                   | When the leader's state matches A_STRING_HERE, the feature is triggered as Enabled and when it changes from the supplied value it triggers as disabled.                                                                                                                 | It does not trigger as disabled when the previous value doesn't match the feature.                                                                                                              |
-| Only                     | Enable\|Disable<br><br>Default: None/both           | Will only run followers when leader's trigger evaluates to "enabled"/on or "disabled"/off                                                                                                                                                                               |                                                                                                                                                                                                 |
-| Invert                   | True\|False<br><br>Default: False                   | If True will invert the leader_enabled value passed to the follower.                                                                                                                                                                                                    | Invert applied to followers modifies the action rather than trigger.                                                                                                                            |
-| Decreasing \| Increasing | True<br><br>Default: False                          | Evaluated by the **Labeled Features State template sensor** (not the automation). The sensor compares the numeric `current_value` vs `previous_value` for the leader entity. `Increasing: True` → `enabled = (current > previous)`. `Decreasing: True` → `enabled = (current < previous)`. Both labels may be present; `enabled` is true if either condition matches. If either value is non-numeric or `previous_value` is empty (first update), `enabled = false`. **Direction takes precedence over `Enable:` / `Disable:` labels** — if a Direction label is present on a feature, any `Enable:` / `Disable:` labels for that feature are ignored when computing `enabled`. `Invert: True` is still applied after Direction evaluation.<br><br>The sensor **always tracks real values** — `current_value`, `previous_value`, and `last_changed_timestamp` are updated on every real (non-`_initial_press`/non-`unknown`/non-`unavailable`) state change regardless of direction. The `enabled` field in the `leaders` attribute reflects whether the direction matched. The automation then gates dispatch via `leader_should_proceed`: if a Direction label is present on the scoped feature leader and `leader_enabled` is `false`, the automation skips follower dispatch for that feature. This means the automation may trigger (and `last_triggered` will update) on every leader change, but no followers are called when direction doesn't match. | It doesn't make sense to use this on a follower. Direction is fully resolved in the sensor; the automation reads the pre-computed `enabled` value. |
-| (\|Not )Between          | (<24_h_fmt>\|-):(<24_h_fmt>\|-)<br><br>Arg required | Will only trigger/run if the current time matches the one of the provided Between labels.                                                                                                                                                                               | An entity can have more than one Between label. They will all be detected and evaluated with an or.                                                                                             |
-| Toggle                   | true<br><br>Default: false                          | When present on a leader, bypasses the Only / Increasing / Decreasing filters (Between / Not Between still apply). Passes `toggle: true` to every dispatched follower so they toggle their current state instead of setting a specific value. Invert on the leader still applies to `leader_enabled` but the follower ignores `leader_enabled` when toggling. | Takes priority over Only / Increasing / Decreasing on the leader. Between still gates the trigger. Per-override (`FEATURE_NAME Toggle: true`) is also supported when feature overrides are active. |
-| (Enable\|Disable) Script | NAME_OF_SCRIPT_TO_CALL<br><br>Arg required          | Calls the named script with arguments provided from labels. If it starts with `automaton.`  or `scene.` simply trigger the automation and don't pass any variables.                                                                                                     |                                                                                                                                                                                                 |
-| Error Mode               | (Silent\|Log\|Alert\|Stop)                          | - Silent: Silently skips errors<br><br>- Log: Logs errors to the Home Assistant logs and continues<br><br>- Alert: Raises an alert and continues (note: alerting hasn't been started yet, so this should be a stub)<br><br>- Stop: Stop running the automation / script<br><br>The Stop/Continue distinction is built on HA's native `continue_on_error: true` action flag as the foundation. Silent/Log/Alert tiers add notification and logging behavior on top of this. | The main place it shows up in the Leader is handling how failed calls to followers process. It is also supported on the follower script itself via `FEATURE_NAME error mode:` labels, where it controls how script call errors are handled. |
+| Enable \| Disable        | A_STRING_HERE<br><br>Arg required                   | **Leader:** when the leader's state matches A_STRING_HERE, the feature is triggered as Enabled; when it changes off that value it triggers as Disabled.<br><br>**Follower:** when triggered and `leader_enabled` matches the qualifier, the follower's implicit feature action sets the entity to A_STRING_HERE. Often used in pairs when different values are needed per direction. | Leader: doesn't fire Disabled when the previous value didn't match either. Follower: handled by the implicit `feature` action item in the dispatch loop.                                       |
+| Only                     | Enable\|Disable<br><br>Default: None/both           | Filters the action list to only fire when `leader_enabled` matches. When applied to both a leader and a follower for the same feature, **both** filters apply.                                                                                                          |                                                                                                                                                                                                 |
+| Invert                   | True\|False<br><br>Default: False                   | **Leader:** inverts the `leader_enabled` value passed to followers.<br><br>**Follower:** inverts the action — leader_enabled=true becomes "set Disable value" / "turn off" and vice versa.                                                                              | Invert on a leader modifies the trigger; on a follower it modifies the action.                                                                                                                  |
+| Decreasing \| Increasing | True<br><br>Default: False                          | **Leader only.** Evaluated by the Labeled Features State template sensor. Compares numeric `current_value` vs `previous_value`. `Increasing: True` → `enabled = (current > previous)`; `Decreasing: True` → `enabled = (current < previous)`. Both may be present (OR). Non-numeric / first update → `enabled = false`. **Direction takes precedence over `Enable:`/`Disable:` labels.** `Invert: True` still applies *after* Direction.<br><br>The sensor always tracks real values regardless of direction; the automation then gates dispatch via `leader_should_proceed` (Direction-labeled feature with `leader_enabled == false` → no dispatch). | Doesn't make sense on a follower.                                                                                                                                                               |
+| (\|Not )Between          | (<24_h_fmt>\|-):(<24_h_fmt>\|-)<br><br>Arg required | Time-of-day gate. Only runs if the current time matches one of the provided ranges. An open end is `-`. Multiple Between labels are OR'd; multiple Not Between labels are OR'd as exclusions.                                                                            |                                                                                                                                                                                                 |
+| Toggle                   | True<br><br>Default: False                          | **Leader:** bypasses Only / Increasing / Decreasing filters (Between / Not Between still apply). Passes `toggle: true` to every dispatched follower so they toggle their current state. Invert on the leader still applies to `leader_enabled`, but the follower ignores `leader_enabled` when toggling.<br><br>**Follower:** toggles the entity's current state. Direct-value labels (`Enable:`, `Disable:`, bare `FEATURE:`) are skipped in the implicit feature action. Script and Extra Script items still run and receive `toggle: true` as a std field. For domains without toggle support Error Mode handling applies. `media_player` falls back to mute-toggle if on/off is not supported. `lock` uses `lock.lock`/`lock.unlock` based on current state. | Per-override (`FEATURE_NAME Toggle: true`) is also honored when feature overrides are active.                                                                                                  |
+| Error Mode               | (Silent\|Log\|Alert\|Stop)                          | Per-feature override of how the dispatch loop handles errors raised by script / feature action items for this feature. Tiers:<br>- **Silent** — skip silently<br>- **Log** — log to HA log and continue<br>- **Alert** — `script.send_alert` and continue<br>- **Stop** — log + halt this feature's action loop (other features still run).<br><br>Built on HA's native `continue_on_error: true` flag plus a manual `stop: error: true` for the Stop tier. | A leader-level Error Mode applies to its own dispatch (including the script call into `labeled_feature_follower`); a follower-level Error Mode applies to its own dispatch loop (and overrides the leader's value for that follower's calls). The automation itself also supports a top-level `Error Mode:` label as the global default. |
+| Exclude                  | True<br><br>Default: False                          | **Follower only.** Opts the entity **out** of `labeled_feature_generics` resolution for the named feature (`(Area \|Floor \|)FEATURE_NAME Exclude: True`). Used primarily to remove specific entities from the **domain fallback** (e.g. exclude one bulb from the area-wide `Lights Off`). No effect when explicit `(Area \|Floor \|)Follower: <Feature>` labels are present. | Only consulted by `labeled_feature_generics`; the standard Leader → Follower flow does not look at this label. |
 
 > [!NOTE] Note
 > FEATURE_NAME (Enable|Disable): A_STRING
-
-### Follower Labels
- The order here matches the evaluation order in the automation. This is helpful to understand when considering how multiple labels will interact. 
-(Note: Double check this order is correct)
-
-| Label Function                      | Value / Arg                                                                                                      | Function                                                                                                                                                                                                                       | Notes                                                                                                                                                     |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Enable \| Disable                   | A_STRING_HERE<br><br>Arg required                                                                                | When triggered and leader_enabled matches the label function, the follower is set to A_STRING_HERE                                                                                                                             | Will often have 2 labels if different values are needed when enabled / disabled                                                                           |
-| Only                                | Enable\|Disable<br><br>Default: None/Both                                                                        | Will only run if the passed leader_enabled value matches the provided argument.                                                                                                                                                | When applied to both leaders and followers, both filters apply.                                                                                           |
-| Invert                              | True\|False<br><br>Default: False                                                                                | If True will invert the follower's action. If the follower is passed leader_enable: on, then the follower will turn off.                                                                                                       | Invert applied to leaders modifies the trigger instead.                                                                                                   |
-| (\|Not )Between                     | (<24_h_fmt>\|-):(<24_h_fmt>\|-)<br><br>Arg required                                                              | Will only trigger/run if the current time matches the one of the provided Between labels. An open end is represented with a -                                                                                                  | An entity can have more than one Between label. They will all be detected and evaluated with an or.                                                       |
-| Toggle                              | true<br><br>Default: false                                                                                       | When present on a follower (or when `toggle: true` is passed in from the leader), the follower toggles its current state instead of setting a specific value. **Invert is ignored** in toggle mode (raw current state is read). **Direct-value labels** (`Enable:`, `Disable:`, bare `FEATURE:`) are **skipped**. Enable/Disable/Default Scripts still run and receive `toggle: true` as an additional std field. For domains without toggle support (`select`, `number`, `text`, `scene`, `vacuum`, etc.) Error Mode handling applies and execution continues or stops per the configured mode. `media_player` falls back to mute-toggle if on/off is not supported. `lock` uses `lock.lock`/`lock.unlock` based on current state. Only / Between still gate the follower normally. | `toggle` is also a std field passed to scripts — scripts that declare a `toggle` field will receive it automatically. |
-| (Enable\|Disable) Script            | NAME_OF_SCRIPT_TO_CALL<br><br>Arg required                                                                       | Calls the named script with arguments provided from labels. If it starts with `automation.` or `scene.` simply trigger the automation and don't pass any variables<br><br>See the more detailed script section below for more. | A feature can only have one script, but leaders and followers can have multiple features.<br><br>Please see detailed script section for trigger behavior! |
-| Script                              | NAME_OF_SCRIPT_TO_CALL<br><br>Arg required                                                                       | Similar to the above script functionality, the "Default" option.<br><br>See detailed script section for a complete description.                                                                                                |                                                                                                                                                           |
-| ( \|Enable\|Disable) Arg FIELD_NAME | % <br><br>Where % is the value to pass into the script's field.<br><br>Also see substitutions for dynamic values | Adds the value (after being substituted if it's dynamic) to the script call paired with FIELD_NAME.                                                                                                                            |                                                                                                                                                           |
-| Error Mode               | (Silent\|Log\|Alert\|Stop)                          | Controls how errors from script calls are handled on the follower. Mirrors the Leader Error Mode behavior: Silent (continue silently), Log (log to HA logs), Alert (send alert), Stop (propagate error and halt).              | Applied as `FEATURE_NAME Error Mode: stop` etc. on the follower entity. Overrides the Leader-level error mode for that specific follower's script calls.  |
-| (no Enable\|Disable)     | A_STRING_HERE                                        | `FEATURE_NAME: value` — a fallback value label with no Enable/Disable qualifier. Acts as both an enable and disable value (sets the follower to this value regardless of leader_enabled direction). Overridden by explicit `Enable:` or `Disable:` labels if present. | Primarily seen in button/default-script patterns carried over to followers. Prefer explicit `Enable:` / `Disable:` labels when different values are needed per direction. |
 
 
 ## Automation Labels
@@ -204,146 +355,472 @@ is applied to the Labeled Leader Automation, it sets the default Error Mode. It 
 ---
 
 
-# Running Custom Scripts, Automations, and Scenes 
-When more logic and customization is needed scripts, automations, and scenes can all be triggered by features. They can be the scripts created by these blueprints, or users can create and use their own. This section documents all the things you'll need to know to call and to write to those domains using labels. 
-
-The primary labels used for scripts are:
-```
-FEATURE_NAME_HERE (Enable|Disable) Script: script.NAME_OF_SCRIPT_TO_CALL
-FEATURE_NAME_HERE (Enable|Disable) Arg FIELD_NAME: %
-FEATURE_NAME_HERE Script: script.NAME_OF_SCRIPT_TO_CALL
-FEATURE_NAME_HERE Arg FIELD_NAME: %
-```
+# Running Custom Scripts, Automations, and Scenes
+When more logic and customization is needed, scripts, automations, and scenes can all be triggered by features. They can be the scripts created by these blueprints, or users can create and use their own. This section documents the shared dispatch model used by both `automation.labeled_feature_leaders` and `script.labeled_feature_follower`, plus how arguments and substitutions work.
 
 > [!NOTE] Note
-> Even though the label contains `Script` this applies to automations and scenes as well. Throughout this section I refer to scripts generically, and it should work the same for automations and scenes, they just don't accept the Arg label.
+> Throughout this section I refer to "scripts" generically. The same labels work for `script.*`, `automation.*`, and `scene.*` references — the only difference is that `automation.*` and `scene.*` calls don't accept the `Arg` labels because they don't take variables.
 
-## Default Script vs Enable|Disable
-Scripts can be triggered in 2 different styles. They're both useful, but for different purposes, so it's important to understand which to use. They can be applied to both Leaders and Followers with similar behavior. The biggest thing is that detected features take priority over a default script and will prevent the default from running.
-### Explicit Enable|Disable 
-This will call the script only when the feature leader matches the Enable or Disable state. It's the most basic and explicit choice and will work the same in both contexts. It will run regardless of what other features are labeled and detected.
+## The Dispatch Loop
+**One execution loop, shared between Leaders and Followers.** Both the Leader automation (running against the leader entity's labels) and the Follower script (running against the follower entity's labels) build a single ordered list of *action items* from labels and walk it through one `repeat:`. The only difference between the two contexts is what the implicit `feature` action item does (Leader → fan out to followers; Follower → set the entity's value / toggle / call the resolved domain action).
 
-### Default Script Leader
-A default script will fire on feature mapping in the form of labels in the format `FEATURE_NAME: state_value`. Features in this form are processed **before** default script processing. If a feature & state in that form is found, it's processed as it should be and the default script **is skipped**. This enables buttons to use a base script and apply labels to customize one or more button actions.
+This eliminates the duplicate code paths the legacy implementation had between leaders and followers, and makes the dispatch order — including custom scripts mixed in with the implicit feature dispatch — completely user-configurable via label tags.
 
-### Default Script Follower
-Because a follower doesn't really accept a state_value; the leader passes leader_enabled. So in this context it really operates as a "both" leader_enabled: true and false for the feature follower... Though it can be overridden if a feature is found as described in Default Script Leader.
+### Step 1 — Sort the features
+The list of features active for the entity is sorted **alphabetically by feature name**. This gives deterministic ordering when two features fire simultaneously — e.g. `Day` always runs before `Night`. It's intentionally a simple lexical sort; if you need stricter ordering, name the features to sort correctly (e.g. `Day Enable` < `Night Disable` works out of the box).
 
+### Step 2 — Build the action list per feature
+For each feature, the entity's labels are parsed into a list of *action items*. Each item is one of two **kinds**:
+
+- **`script`** — a script, automation, or scene to call. Sourced from these labels:
+  - `<F> [Enable|Disable] Script <tag>: <ref>` — **replaces** the implicit feature action (any Script label present causes the implicit feature item to be dropped from the array).
+  - `<F> [Enable|Disable] Extra Script <tag>: <ref>` — **adds** to the array without dropping the implicit feature item.
+- **`feature`** — a feature dispatch. Sourced from these labels:
+  - **Implicit** — one item generated automatically per feature, with the feature name set to `<F>`. Dropped from the array if any `<F> [Enable|Disable] Script <tag>: …` (replacement-style) label is present.
+  - `<F> [Enable|Disable] Feature <tag>: <other_feature>` — **replaces** the implicit feature item with one targeting `<other_feature>`. If multiple `Feature` labels are declared they all live in the array, but the implicit one is dropped. Empty value means "the current feature" (`<F>`).
+  - `<F> [Enable|Disable] Extra Feature <tag>: <other_feature>` — **adds** a feature item without dropping the implicit one. Empty value means "the current feature" (`<F>`).
+
+`<tag>` is a free-form word placed immediately after the `Script` / `Extra Script` / `Feature` / `Extra Feature` keyword. Labels with no tag are sorted *last* — see Step 3.
+
+> [!NOTE] Replacement vs Additive
+> The `Script` / `Feature` keywords are **replacement-style** — declaring any of them tells the loop "I want to control what dispatches for this state; don't auto-fire the implicit feature." The `Extra Script` / `Extra Feature` keywords are **additive** — they add to whatever the loop was already going to do (which may or may not include the implicit feature depending on whether any non-Extra Script/Feature label is present).
+
+### Step 3 — Sort the action list
+Items in the array are sorted:
+
+1. **Primary key — tag** — lexicographic. Labels with no tag sort *last*.
+2. **Secondary key — variant** — `Enable` first, then *normal* (no variant qualifier), then `Disable`.
+
+So given:
+```
+Screen Enable Script Pre:   script.warmup
+Screen Script Pre:          script.log
+Screen Disable Script Pre:  script.cooldown
+Screen Enable Extra Script: script.foo    # no tag → last in its variant
+Screen Script:              script.bar    # no tag, no variant
+```
+
+After sort:
+```
+1. Screen Enable Script Pre:   script.warmup    # tag "Pre", Enable
+2. Screen Script Pre:          script.log       # tag "Pre", Normal
+3. Screen Disable Script Pre:  script.cooldown  # tag "Pre", Disable
+4. Screen Enable Extra Script: script.foo       # no tag, Enable
+5. Screen Script:              script.bar       # no tag, Normal
+(implicit feature item drops here because a Script label is present)
+```
+
+### Step 4 — Filter to current state
+The sorted array is filtered against the current evaluation:
+- `Enable`-variant items are dropped when `leader_enabled` is `false`.
+- `Disable`-variant items are dropped when `leader_enabled` is `true`.
+- Normal-variant items and the implicit feature item are always kept.
+
+### Step 5 — Execute the loop
+A single `repeat:` walks the surviving array. Each iteration:
+
+- **For `script` items** — call the script reference with the resolved args (see "Passing Arguments to Scripts" below). The reference's domain determines dispatch:
+  - `automation.*` / `scene.*` → plain `action: <ref>` with no data
+  - `script.*` with no args → `action: <ref>` with the std fields dict
+  - `script.*` with args → `script.turn_on` with `variables:` so args propagate
+  Args validation runs against the target script's declared fields; invalid args trigger Error Mode per the feature's `Error Mode:` label.
+
+- **For `feature` items**:
+  - **On a Leader** — resolve the feature's follower set (via the standard `(Area |Floor |)Follower:` + `(Area |Floor |)Provides:` resolver) and iterate `script.labeled_feature_follower` once per follower, passing `follower_entity_id`, `feature`, `leader_entity_id`, `leader_enabled`, `toggle`, `error_mode`, `scope`, `scope_id`.
+  - **On a Follower** — run the resolved direct entity action: bare-value via the domain's set-value service, Enable/Disable-value (`<F> [Enable|Disable]: <value>` → set), Toggle (`<F> Toggle: True` → `homeassistant.toggle` / domain-specific variant), or the implicit on/off based on `follower_enabled`. Behaves as a no-op when current state already matches.
+  - **No-ref Extra Feature on a follower** is documented as a no-op — the follower's "act on this entity per the feature" semantics don't compose with itself. (Use a real `<other_feature>` ref to dispatch something different through `labeled_feature_generics`, or use Extra Script if you want to layer additional behavior.)
+
+After each iteration, the feature's resolved `Error Mode` (per-feature label → entity / leader → automation default) controls the response:
+- `silent` — no-op
+- `log` — `system_log.write` at `error`
+- `alert` — `script.send_alert`
+- `stop` — log + a manual `stop: error: true` halts this feature's action loop (the outer feature loop continues to the next feature).
+
+All call sites use `continue_on_error: true` so error handling is owned by the loop, not by HA's default propagation.
+
+### Step 6 — Continue with the next feature
+Errors in one feature's action loop don't stop other features from dispatching — only `Error Mode: stop` halts the current feature's loop, and even then the outer feature loop continues.
+
+## Script / Feature label reference
+
+| Label Function                                  | Format                                                          | Function                                                                                                                                                                                                                                                                            | Notes                                                                                                                                                                                                                                                                                                                                                       |
+| ----------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Script                                          | `<F> [Enable\|Disable] Script <tag>: <ref>`                      | **Replacement-style.** Adds a `script` item to the action array; the presence of any `Script` label drops the implicit `feature` item. Variant qualifier (`Enable` / `Disable`) restricts dispatch to the matching state.                                                            | `<tag>` is optional and free-form. Multiple Script labels for the same feature with different tags all sit in the array. `<ref>` is `script.X`, `automation.X`, or `scene.X`.                                                                                                                                                                              |
+| Extra Script                                    | `<F> [Enable\|Disable] Extra Script <tag>: <ref>`                | **Additive.** Adds a `script` item without dropping the implicit feature item.                                                                                                                                                                                                       | Use this to layer additional behavior on top of the standard feature dispatch (e.g. log a message in addition to setting a follower's value).                                                                                                                                                                                                              |
+| Feature                                         | `<F> [Enable\|Disable] Feature <tag>: <other_feature>`           | **Replacement-style.** Adds a `feature` item targeting `<other_feature>` and drops the implicit feature item. Empty value means "the current feature" (`<F>`).                                                                                                                       | When `<other_feature>` resolves on a follower, it goes through `labeled_feature_generics` for the entity-action mapping. Follower set is resolved per the *referenced* feature's labels, not the current feature.                                                                                                                                          |
+| Extra Feature                                   | `<F> [Enable\|Disable] Extra Feature <tag>: <other_feature>`     | **Additive.** Adds a `feature` item without dropping the implicit one. Empty value means "the current feature" (`<F>`).                                                                                                                                                              | On a follower, an Extra Feature with no `<other_feature>` is a documented no-op (acting on the same entity twice). On a leader, the no-ref form simply re-fans the same feature, which is rarely useful but allowed.                                                                                                                                       |
+| Arg                                             | `<F> [Enable\|Disable] Arg <tag> <field>: <value>`               | Provides a per-script argument. Args are pooled by tag + variant — every Script / Extra Script item with the same `<tag>` and matching variant receives the same args. The no-tag pool feeds the no-tag items.                                                                       | `<field>` must match a declared field on the target script (or be one of the standard pass-through fields). Invalid fields trigger Error Mode. See "Passing Arguments to Scripts" below.                                                                                                                                                                   |
+| (no tag forms)                                  | `<F> [Enable\|Disable] Script: <ref>`<br>`<F> Arg <field>: <value>` | Same as the tagged forms but with no `<tag>` — these sort *last* (after every tagged item).                                                                                                                                                                                          | The no-tag, no-variant form (`<F> Script: <ref>`) is the simplest case and matches the legacy "default script" behavior.                                                                                                                                                                                                                                   |
+
+> [!NOTE] Scope prefix still required
+> Like every other optional label, Script/Feature/Arg labels must carry the same scope prefix as the grouping label. `Area Leader: Screen` → `Area Screen Script Pre: script.foo`, not just `Screen Script Pre: script.foo`. The bare feature name (without prefix) is what gets passed to scripts via the `feature` field.
 
 ## Passing Arguments to Scripts
-Scripts by themselves are helpful, but what really makes them shine is when they have context. The preferred way to get this context into scripts is by passing arguments into fields. The way the automation does this is by:
-- Getting all of the Args on the follower for the given Feature
-	- For each Arg, get the FIELD_NAME and value
-		- If the field exists on the script, add the field and value to the list of args
-		- Otherwise trigger Error Mode
-	- Detect and if present add the following to the list of args
-	  If they aren't found in the script, it's assumed they aren't needed and no Error Mode handling is needed.
-		- feature
-		- scope
-		- scope_id
-		- follower_entity_id
-		- leader_entity_id
-		- leader_enabled
-		- toggle (boolean — true when the follower is in toggle mode; scripts that declare a `toggle` field receive it automatically)
-- Use these args as fields in the call to the script.
+Scripts by themselves are helpful, but what really makes them shine is when they have context. The preferred way to get this context into scripts is by passing arguments into fields. The dispatch loop does this by:
+
+- Reading every Arg label for the current feature and variant, keyed by tag. Args bind to the Script / Extra Script items that share their `<tag>` and variant (no-tag args bind to no-tag scripts).
+- For each Arg `<field>`:
+  - If the target script declares a field by that name, the value (after substitution if dynamic — see below) is added to the call.
+  - Otherwise the feature's `Error Mode` is triggered for an invalid arg.
+- Additionally, these **standard pass-through fields** are added automatically if the target script declares them (no Error Mode for missing ones — they're assumed optional):
+  - `feature` / `leader_feature`
+  - `scope` / `scope_id`
+  - `follower_entity_id` / `leader_entity_id`
+  - `leader_enabled`
+  - `toggle` (true when the follower is in toggle mode; scripts that declare a `toggle` field receive it automatically)
 
 ### Missing fields & Error Mode
-The automation will detect if a follower has an Arg FIELD_NAME where the script doesn't have a corresponding FIELD_NAME. It will then take the corresponding `Error Mode` action(s) and stop or continue as specified.
+When an Arg's `<field>` isn't declared by the target script, the feature's resolved `Error Mode` controls the response — `silent`/`log`/`alert` log and proceed with the valid args; `stop` halts the loop for that feature.
 
-### Argument Substitutions 
-One big thing to be aware of when using scripts specifically is how the argument substitution works. It's currently very limited and only works on the Arg label and can only reference Features & Leaders, but it does allow for dynamic values to be passed via labels. 
+### Argument Substitutions
+Args support a limited substitution syntax to pull values from the Labeled Features State sensor. It only works on Arg label values and currently references `leaders` / `features`, but other attributes can be added in the future.
 
 Format:
 ```
-FEATURE_NAME_HERE (Enable|Disable) Arg FIELD_NAME: [leaders].[feature_leader].[current_value]
-FEATURE_NAME_HERE (Enable|Disable) Arg FIELD_NAME: [features].[feature_name].[enabled]
+<F> [Enable|Disable] Arg <tag> <field>: [leaders].[feature_leader].[current_value]
+<F> [Enable|Disable] Arg <tag> <field>: [features].[feature_name].[enabled]
 ```
 
-When evaluating the value to pass:
-- Get the relevant attribute from Labeled Features State. Currently I only reference `(leaders|features)` but other attributes can be added and used. 
-- Parse that attribute as JSON
-- Get the `(feature_leader|feature_name)` object. When those values are used they are expected to return the feature_leader entity_id and feature_name being actually being used. 
-- Get the `(current_value|enabled)` result. Again, these are what I currently reference, other fields could be utilized or added. For `leaders`, the available fields are `current_value`, `previous_value`, `last_changed_timestamp`, and the nested `features` dict. For `features`, the available fields are `leader_entity_id`, `value`, `enabled`, and `timestamp`.
-- Assign this as the value to pass into the script.
+When evaluating:
+- Get the named attribute from `sensor.labeled_features_state`.
+- Parse it as a dict.
+- `feature_leader` / `feature_name` are placeholders that resolve to the current leader's `entity_id` / the current feature's name; any other key looks up that literal in the dict.
+- The third bracket selects the field. For `leaders`, available fields are `current_value`, `previous_value`, `last_changed_timestamp`, and the nested `features` dict. For `features`, available fields are `leader_entity_id`, `value`, `enabled`, and `timestamp`.
+- The resolved value is passed to the script.
 
 > [!NOTE] TODO
 > Looking for suggestions and ideas on how to make parsing less gross? Maybe regex groups.
 
 ## Best Practices
-When just labels, it's pretty hard to stray from the intended use. With scripts that's a whole different story. Users are welcome to go about scripts anyway they wish (I'm curious to see the possibilities!), but this is a list of practices I try to ad-hear to when working with scripts. 
+When just labels, it's pretty hard to stray from the intended use. With scripts that's a whole different story. Users are welcome to go about scripts anyway they wish (I'm curious to see the possibilities!), but this is a list of practices I try to adhere to when working with scripts.
 
 > [!NOTE] Best Practice
-> The script should aim to check the current state and bring it into alignment with what's desired rather than blindly turning things on or off
+> The script should aim to check the current state and bring it into alignment with what's desired rather than blindly turning things on or off.
+
+> [!NOTE] Best Practice
+> Prefer tags over relying on label name to imply order. Even if you only have one script today, giving it a tag (`Screen Script Main: script.foo`) makes it explicit how it'll sort relative to anything added later. The exception is the simplest "just one default" case — leaving the tag off is fine when there really is only one.
 ---
 
 ---
 
 
 ## Button Based Features
-Some use cases don't make sense for an environment based trigger but instead are more suited for a button based solution. These can use labels and areas too! They all rely on scripts, so be familiar with that section, in particular the Default labeling as that allows for buttons to use a default set of actions while allowing the user to easily override one or more if desired.
+Some use cases don't make sense for an environment based trigger but instead are more suited for a button based solution. These can use labels and areas too! They all rely on scripts, so be familiar with the **Running Custom Scripts** section above — in particular the way a replacement-style `Script` label on a leader (with no tag) suppresses the implicit feature dispatch and lets the script take over completely.
+
+The button-based feature stack is split into two layers, with a small shared error-handling helper:
+
+1. **`script.labeled_feature_generics`** — a *generic feature dispatcher*. It knows nothing about specific button devices. Given a generic feature name (`Lights Off`, `Volume Up`, `Media Pause`, `Fan On`, `Night`, …) it resolves the right entities in the scope and runs the correct service call against them.
+2. **Per-device mapping scripts** (e.g. `script.labeled_feature_somrig`) — translate a specific device's raw event names (`1_short_release`, `2_double_press`, …) plus contextual state (is media currently playing?) into one or more calls to `labeled_feature_generics`. One mapping script per button-device family.
+3. **`script.labeled_feature_error_mode`** — a shared helper used by everything in this stack to dispatch the `silent` / `log` / `alert` tiers of Error Mode. The `stop` tier is intentionally left to each caller because a `stop:` inside the helper would only halt the helper, not its parent.
+
+This split keeps the generic catalog of "things a button could do" in one place, and lets each new device type contribute only the small translation table that's actually device-specific.
+
+### Labeled Feature Error Mode
+`script.labeled_feature_error_mode` is the shared Error Mode handler used by `labeled_feature_generics`, the per-device mapping scripts, and any future Labeled Feature script that wants consistent error reporting.
+
+**Fields:**
+
+- `error_mode` (string, default `log`) — `silent | log | alert | stop`.
+- `message` (string, required) — human-readable message describing what went wrong.
+- `source` (string, default `Labeled Feature`) — short label prefixed onto logs/alerts (e.g. `Labeled Feature Generics`, `Labeled Feature Somrig`).
+- `severity` (string, default `medium`) — severity for the `alert` tier.
+
+**Behavior per tier:**
+
+| Tier   | Action                                                                                              |
+|--------|-----------------------------------------------------------------------------------------------------|
+| silent | No-op.                                                                                              |
+| log    | `system_log.write` at `warning` with `"{source}: {message}"`.                                       |
+| alert  | `script.send_alert` with `alert_severity: {severity}`, `alert_title: {source}`, `alert_message`.    |
+| stop   | `system_log.write` at `error` with the message. **Caller must follow up with its own `stop: error: true`** to actually halt parent execution. |
+
+The caller pattern looks like:
+
+```yaml
+- action: script.labeled_feature_error_mode
+  data:
+    error_mode: '{{ _err_mode }}'
+    source: Labeled Feature Generics
+    message: "No targets resolved for feature '{{ _feature }}'."
+- if:
+    - condition: template
+      value_template: '{{ _err_mode == "stop" }}'
+  then:
+    - stop: "Labeled Feature Generics: no targets for '{{ _feature }}'."
+      error: true
+```
+
+### Labeled Feature Generics
+`script.labeled_feature_generics` is called by mapping scripts (or directly) with `feature: <FeatureName>` and runs the matching generic action.
+
+#### Resolution algorithm
+For each call, the script resolves a target entity set as follows:
+
+1. **Scope set**: build the candidate set of entities in `scope`/`scope_id`:
+   - `area` → all entities in `area_entities(scope_id)` plus entities of all devices in `area_devices(scope_id)`
+   - `floor` → union of the above across all areas in `floor_areas(scope_id)`
+   - `none` → empty (no scope filter)
+2. **Label-resolved targets**: entities labeled `(Area |Floor |)Follower: <FeatureName>` that are in the scope set.
+3. **Excluded**: entities labeled `<scope-prefix><FeatureName> Exclude: True` (e.g. `Area Lights Off Exclude: True`).
+4. **If `label_targets - excluded` is non-empty → use that as the final target set.**
+5. **Else → fallback**: enumerate entities in the scope set whose `domain` matches the feature's *default domain* (see table below), minus the excluded set.
+6. **If still empty and the feature has no domain fallback** (e.g. `Ads`, `Night`) → trigger Error Mode.
+7. **Run the feature's action** against the final target set.
+
+This means a user can opt-in entities by labeling them `Area Follower: <Feature>` (most precise), or just rely on the domain default (e.g. all `light` entities in the area for `Lights Off`), and use `Exclude: True` to remove a specific entity from the fallback. Exclude has no effect when explicit follower labels are present because at that point the user has already deliberately opted-in the desired entities.
+
+#### `toggle` modifier
+`labeled_feature_generics` accepts a `toggle` boolean field (passed through automatically by `labeled_feature_follower` and by mapping scripts that wish to force a toggle for a given action). When `toggle: true`:
+
+- `light` features → `light.toggle`
+- `fan` features → `fan.toggle`
+- `media_player.media_play_pause` features (`Media Toggle`, `Media Play`, `Media Pause`) → `media_player.media_play_pause` (already a toggle); other media features such as `Media Next`, `Media Seek Forward`, `Volume Up`, etc. → Error Mode (toggle is not meaningful)
+- `Ads` / `Night` → already-`homeassistant.toggle` semantics, the flag is a no-op
+
+#### Generic feature catalog
+
+| Feature | Default Domain Fallback | Action (toggle = false) | Action (toggle = true) |
+|---|---|---|---|
+| `Media Toggle` | `media_player` (most-recently-active — see below) | `media_player.media_play_pause` | same |
+| `Media Play` | `media_player` (most-recently-active) | `media_player.media_play` | `media_player.media_play_pause` |
+| `Media Pause` | `media_player` (most-recently-active) | `media_player.media_pause` | `media_player.media_play_pause` |
+| `Media Next` | `media_player` (most-recently-active) | `media_player.media_next_track` | Error Mode (toggle invalid) |
+| `Media Previous` | `media_player` (most-recently-active) | `media_player.media_previous_track` | Error Mode |
+| `Media Seek Back` | `media_player` (most-recently-active) | `media_player.media_seek` `seek_position: max(current − 30s, 0)` — **silently falls back to `media_player.media_previous_track`** when the target's `supported_features` doesn't have the `SUPPORT_SEEK` bit (1024) set | Error Mode |
+| `Media Seek Forward` | `media_player` (most-recently-active) | `media_player.media_seek` `seek_position: current + 30s` — **silently falls back to `media_player.media_next_track`** when the target lacks `SUPPORT_SEEK` (1024) | Error Mode |
+| `Volume Up` | `media_player` (most-recently-active) | `media_player.volume_set` w/ `volume_level: min(current + 0.07, 1.0)` (7% step, single target) | Error Mode |
+| `Volume Down` | `media_player` (most-recently-active) | `media_player.volume_set` w/ `volume_level: max(current − 0.07, 0.0)` (7% step, single target) | Error Mode |
+| `Lights On` | `light` | `light.turn_on` | `light.toggle` |
+| `Lights Off` | `light` | `light.turn_off` | `light.toggle` |
+| `Lights Up` | `light` | `light.turn_on` w/ `brightness_step_pct: +10` | `light.toggle` |
+| `Lights Down` | `light` | `light.turn_on` w/ `brightness_step_pct: -10` | `light.toggle` |
+| `Fan On` | `fan` | `fan.turn_on` | `fan.toggle` |
+| `Fan Off` | `fan` | `fan.turn_off` | `fan.toggle` |
+| `Fan Up` | `fan` | `fan.increase_speed` | `fan.toggle` |
+| `Fan Down` | `fan` | `fan.decrease_speed` | `fan.toggle` |
+| `Ads` | label-only (no domain fallback) — Error Mode if missing | `homeassistant.toggle` | `homeassistant.toggle` |
+| `Night` | label-only (no domain fallback) — Error Mode if missing | `homeassistant.toggle` | `homeassistant.toggle` |
+
+The `Volume Up` / `Volume Down` step is fixed at 7% and is applied via `volume_set` (rather than the integration's `volume_up` / `volume_down` defaults) so the increment is deterministic across integrations. The `Lights Up` / `Lights Down` step is fixed at 10% for now. The `Ads` and `Night` features have no sensible domain fallback (every `input_boolean` in the area isn't the right answer), so they require an explicit `(Area |Floor |)Follower: Ads` / `Follower: Night` label and will Error Mode if nothing is found.
+
+##### Media-player target selection (transport + volume + seek)
+
+Every `media_player` generic feature — `Media Toggle`, `Media Play`, `Media Pause`, `Media Next`, `Media Previous`, `Media Seek Back`, `Media Seek Forward`, `Volume Up`, `Volume Down` — collapses the resolved follower set down to a **single, most-recently-active** `media_player` entity before dispatching the underlying service call. This avoids fan-out across an area's full speaker set, which otherwise causes double-press toggles (the second player flips the state the first one just set), volume drift on idle members of a speaker group, and seek/next/prev firing on whichever player happens to be sorted first rather than the one the user is actually listening on.
+
+The selection algorithm runs once per call against `final_targets` (after Provides resolution, Exclude filtering and domain fallback). It picks the entity by these tiebreakers in order:
+
+1. **Currently playing or buffering**, sorted by `last_changed` descending — the player that most recently transitioned into an active state wins.
+2. Otherwise, the entity with the most recent `last_changed` overall (excluding `unknown` / `unavailable` / `none`).
+3. As a final fallback (e.g. every candidate is unknown), `final_targets | first`.
+
+Because the algorithm uses `last_changed`, "most recently active" survives the player going idle: if music played on the kitchen speaker an hour ago and on the office speaker five minutes ago and nothing is playing now, a `Volume Up` press in the kitchen still routes to the kitchen speaker because that's the one with the most recent state transition inside the kitchen's scope. It only crosses over when the office speaker becomes the most-recent across the *resolved scope's* media-player set.
+
+This is also what makes the seek-fallback behaviour useful: the seek check inspects exactly one entity's `supported_features` bitmask. If `SUPPORT_SEEK` (1024 / `0x400`) is clear — common on Music Assistant queues, Snapcast, and some Squeezebox/streaming surfaces — the script silently dispatches `media_player.media_previous_track` (back) or `media_player.media_next_track` (forward) against the same selected target instead. No log line is emitted, because falling back to track skip is the desired behaviour on those integrations.
+
+Lights, fans, and `Ads` / `Night` features are unaffected — they still target the full `final_targets` set.
+
+#### Calling `labeled_feature_generics` directly
+The script accepts these fields (most are pass-through metadata from the caller):
+
+- `feature` (required) — must match one of the catalog entries above (case-sensitive).
+- `exclude_feature` (optional, defaults to `feature`) — the feature name used to build the Exclude label (`(Area |Floor |)<exclude_feature> Exclude: True`). This exists so that mapping scripts (like `labeled_feature_somrig`) can thread the *leader's* feature name through dispatched generic calls, keeping Exclude keyed on the leader (e.g. `Area Night Buttons Exclude: True` excludes an entity from every action dispatched by the Night Buttons leader) rather than on the dispatched generic action (`Area Lights Off Exclude: True`). When you call `labeled_feature_generics` directly you almost always want to leave this empty and let it default to `feature`.
+- `scope`, `scope_id` — for area/floor resolution.
+- `follower_entity_id`, `leader_entity_id` — used as fallback for area resolution when `scope_id` is empty.
+- `leader_enabled` — pass-through for consistency.
+- `toggle` (boolean, default `false`) — see the modifier section above.
+- `error_mode` — `silent | log | alert | stop`. Standard Error Mode tiers as elsewhere.
+
+When wired in via the standard Leader → Follower flow, all of these are passed automatically by `labeled_feature_follower` via its dispatch loop's `script` action items (see **The Dispatch Loop**).
+
+### Button Mapping Scripts
+Mapping scripts are how a specific button device's raw events get translated into generic feature calls. They are short branching scripts: read the raw `feature` string (which is the event name from the button entity, e.g. `1_short_release`), evaluate any contextual state needed for the device family (typically "is anything in this area currently playing media?"), and call `script.labeled_feature_generics` one or more times with the appropriate generic feature.
+
+Each new physical button device family gets its own mapping script. There is currently one mapping script:
+
+#### `script.labeled_feature_somrig`
+Maps the IKEA Somrig (and other 2-button) device events into generic feature calls. The Somrig produces events of the form `1_short_release`, `1_long_press`, `1_double_press`, and similarly for button 2 (other variants like `1_long_release` and `1_initial_press` are ignored). The IKEA E2123 (dots) variant produces `dots_N_*` events — these are mapped to `N_*` first so both device types share the same logic.
+
+**Inputs (passed automatically by the `Labeled Feature Leaders` automation alongside the Script dispatch — see **The Dispatch Loop**):**
+
+- `feature` — raw event string from the button entity (e.g. `1_short_release`, `dots_2_double_press`).
+- `leader_feature` — the leader's labeled feature name (e.g. `Night Buttons`). The leaders automation always sets this to the feature name it dispatched the script for. The somrig script uses it to scope Exclude evaluation: entities labeled `(Area |Floor |)<leader_feature> Exclude: True` are excluded from **both** the `media_playing` evaluation **and** every downstream `labeled_feature_generics` call. The downstream calls receive it via the `exclude_feature` field so that Exclude is keyed on the leader, not on whichever generic action happened to fire.
+- `scope`, `scope_id`, `follower_entity_id`, `leader_entity_id`, `leader_enabled`, `toggle`, `error_mode` — standard pass-through.
+
+**Contextual state:** the script computes `media_playing` by inspecting `media_player` entities in the resolved scope (area or floor — mirrors the `labeled_feature_generics` scope set), with any entities matched by the leader's Exclude label filtered out first. This is the only contextual signal it uses; other button-style features like night-mode awareness now live as their own generic features and are dispatched the same way as everything else.
+
+**Scoping and Exclude:** the somrig script builds the same scope entity set that `labeled_feature_generics` uses (`area_entities` + `device_entities` for `area`, union over `floor_areas` for `floor`). When `leader_feature` is set, entities labeled `<leader_feature> Exclude: True` or `<scope-prefix><leader_feature> Exclude: True` and which fall inside the scope set are removed from the `media_playing` check. The same `leader_feature` is then forwarded as `exclude_feature` on every dispatched `labeled_feature_generics` call, so Exclude is consistently keyed on the leader's feature name (e.g. `Area Night Buttons Exclude: True` opts an entity out of every action the Night Buttons leader can dispatch — `Lights Off`, `Media Pause`, `Fan On`, `Night`, …).
+
+**Event → generic-feature mapping:**
+
+| Event | Playing | Not Playing |
+|---|---|---|
+| `1_short_release` | `Lights Off` (floor scope) + `Media Pause` | `Lights Off` (floor scope) |
+| `2_short_release` | `Media Pause` | `Media Play` |
+| `1_double_press` | `Media Seek Back` | `Fan On` (with `toggle: true`) |
+| `2_double_press` | `Media Seek Forward` | `Night` |
+| `1_long_press` | `Volume Up` | `Lights Up` |
+| `2_long_press` | `Volume Down` | `Ads` |
+
+Only the canonical "user did the thing" events — `*_short_release`, `*_double_press`, and `*_long_press` — are tracked. All other event variants from the device (`*_initial_press`, `*_long_release`, etc.) are deliberately ignored.
+
+The `1_double_press` Not-Playing branch always calls `labeled_feature_generics` with `toggle: true` so the fan flips state regardless of the caller-passed toggle value. Every other branch passes through the incoming `toggle` value unchanged (so a `Toggle: True` label on the button entity itself is still honored everywhere it makes sense).
+
+**Long-press repeat behavior:** the three *stepping* long-press branches — `1_long_press` Playing (`Volume Up`), `1_long_press` Not Playing (`Lights Up`), and `2_long_press` Playing (`Volume Down`) — repeat their `labeled_feature_generics` dispatch on a 500 ms cadence, in a loop guarded by a `while:` that watches the leader entity's state. The loop exits as soon as the leader's state changes (the user releases the button or presses something else, causing the button entity to emit a new event), with an additional 200-iteration safety cap (~100 seconds of continuous holding). The `2_long_press` Not-Playing branch dispatches `Ads` as a toggle and intentionally fires once — toggles aren't stepping actions. If the script is invoked manually without a `leader_entity_id`, every long-press branch falls back to a single dispatch (the `while:` requires a real leader entity to observe).
+
+To keep the visible cadence consistent regardless of how long the underlying `media_player` / `light` service calls take to confirm, the loop uses two reinforcing techniques: (1) it dispatches `labeled_feature_generics` via `script.turn_on` rather than a synchronous `action:` call, so each tick returns immediately instead of waiting for the service to acknowledge; and (2) each iteration records its start timestamp and computes the delay as `500 ms − elapsed`, clamped to a 50 ms floor. The combination eliminates almost all jitter even on slow / multi-speaker integrations. Tradeoff: errors raised inside the dispatched `labeled_feature_generics` call do not propagate back to the somrig loop — they're still handled by the generic dispatcher's own Error Mode plumbing (`script.labeled_feature_error_mode` logs/alerts as configured), so unresolved targets / unknown features / unsupported toggles are still visible; only error propagation to the somrig parent is dropped. The one-shot fallback branch (when `leader_entity_id` is missing) keeps the synchronous `action:` shape so manual test calls still bubble errors up normally.
+
+`Lights Off` is the one feature the somrig script does not dispatch at the caller's scope: both the Playing and Not-Playing `1_short_release` branches forward `scope: floor` (with `scope_id` set to the leader's resolved floor). This is intentional — a single short-press on any button in the house should clear every light on that floor, not just the area the button happens to live in. Every other generic feature dispatched from somrig uses the scope passed in by the leader automation. Exclude on the leader's feature (`<scope-prefix><leader_feature> Exclude: True`) still applies to the floor-scoped `Lights Off` call because `exclude_feature` is forwarded independently of `scope` / `scope_id`.
+
+#### Wiring a button to `labeled_feature_somrig`
+
+The button event entity should be labeled:
+
+```
+Feature Leader
+Area Leader: <button_feature_name>
+Area <button_feature_name> Script: script.labeled_feature_somrig
+Area <button_feature_name> Arg feature: [leaders].[feature_leader].[current_value]
+```
+
+This is the standard "no-tag Script on a Leader" pattern: when the button's state changes (i.e. it emits a new event), the `Labeled Feature Leaders` automation dispatches `labeled_feature_somrig` through the loop's `script` action item with `feature` set to the event string from the button entity's state, plus all the standard pass-through fields. Because the `Area <button_feature_name> Script:` label is replacement-style, the implicit feature dispatch is suppressed and only `labeled_feature_somrig` runs.
+
+Followers within the area (or floor, depending on the leader's scope prefix) participate via their existing `(Area |Floor |)Follower: <GenericFeature>` labels — e.g. `Area Follower: Lights Off`, `Area Follower: Night`. The somrig script doesn't reference those labels directly; it just calls `labeled_feature_generics` for the appropriate generic feature, and that's where label resolution happens.
+
+#### Adding a new button mapping script
+For a different button family (e.g. IKEA STYRBAR, Hue dimmer, custom MQTT button):
+
+1. Create a new script named `script.labeled_feature_<device_family>`.
+2. Accept the same standard fields (`feature`, `scope`, `scope_id`, `follower_entity_id`, `leader_entity_id`, `leader_enabled`, `toggle`, `error_mode`).
+3. Use a `choose:` block to branch on the raw event names this device produces.
+4. For each branch, evaluate whatever contextual state makes sense for that device family (media playing, time of day, etc.) and call `script.labeled_feature_generics` once per generic feature you want to dispatch.
+5. Wire it in to your button entity using the same no-tag-`Script`-on-a-Leader pattern as above.
+
+The generic catalog lives in `labeled_feature_generics`; mapping scripts should never run service calls directly — they should always go through the generic dispatcher so that label resolution, Exclude, and the `toggle` modifier work consistently.
+
+---
+
+# Area Based Features
+The Leader/Follower and Button stacks are great when you already have entities to wire together — but sometimes the user just needs an entity to *exist* in an area so other things can be wired against it. Area Based Features fill that gap.
+
+Tag an area with `(Area |Floor |)Provides: <FeatureName>` and the system generates the corresponding MQTT discovery entity for you. Built-in features cover common cases (VPD sensor for grow areas, tracked-PSI number, area manifest); user-declared features default to a `select` whose options can come from either entity labels (`(scope-prefix)Provides Option: <FeatureName>`) or static label declarations (`(scope-prefix)Provides Options: <FeatureName>: A|B|C`). Remove the label and the discovery entity is retracted (empty retained payload). The whole pipeline survives HA restarts because the discovery topics are retained and re-published on every `homeassistant.start`.
+
+## Architecture
+The pipeline is split into four layers with deliberate responsibility boundaries — the state sensor stays cheap, the automation does the parsing, and the scripts build & publish.
+
+```
+sensor.labeled_feature_areas_state.label_map  ← lightweight trigger surface
+            │  (state-attribute change on label_map)
+            ▼
+automation.labeled_feature_areas              ← diff added/removed, route both
+                                                creates and deletes to the
+                                                per-feature script
+       ┌───────────────────┬─────────────────────────┐
+       │ added (created)   │ removed (delete: true)  │
+       ▼                   ▼
+                  script.labeled_feature_area  (owns canonical naming;
+                                                short-circuits on _delete)
+                                ▼
+                  script.labeled_feature_entities  (publish or retract
+                                                    MQTT discovery)
+```
+
+The layer split:
+
+- **`sensor.labeled_feature_areas_state.label_map`** — *trigger surface, nothing more*. The sensor's single job is to (a) re-render when label / area / floor registries change and (b) emit a flat `(scope_id, label)` registry the automation can diff. Each entry is keyed `<scope_id>||<label>` and carries exactly five fields: `scope_id`, `label`, `scope`, `declaring_area_id`, `component`. There is **no `object_id`** — the sensor doesn't know feature names, doesn't have a `Manifest` / `Shoot Zone` / `Root Zone` ladder, and doesn't have a per-feature default-component lookup. `component` defaults to `select` for every entry; the only override the sensor honors is a `(Area |Floor |)Provides <Label> Component: <comp>` modifier label on the declaring area. Adding a new built-in feature requires **zero** sensor changes.
+
+  This is the important boundary: the sensor doesn't parse icon, initial, min/max/step, unit, device_class, options, or any feature-specific knob. The script owns every one of those, read fresh from `labels(declaring_area_id)` at dispatch time. The sensor stays small, re-renders are cheap, and the template's surface area doesn't grow with the feature catalog.
+
+- **`automation.labeled_feature_areas`** — *trivial diff-and-dispatch*. Reads `trigger.to_state.attributes.label_map` (and `trigger.from_state.attributes.label_map` on state triggers), builds `now` / `prev` maps keyed by `<scope_id>||<label>`, computes `added = now - prev` and `removed = prev - now`. Entries whose `component` changed appear in both lists (a `Component:` override swap becomes a remove-then-add — natural rename semantics). Removes run first so the stale discovery topic retracts before the new one publishes. On `homeassistant.start` every entry in `now` is treated as added (idempotent re-publish for restart resilience). Both `added` and `removed` are dispatched to **`script.labeled_feature_area`**; removes pass `delete: true`. The automation owns no parsing logic and no naming logic — it just routes.
+
+- **`script.labeled_feature_area`** — *the feature's source of truth, including object-id naming*. Receives `feature` (== the label name), `scope`, `scope_id`, `feature_data` (the 5-field dict from the sensor, including `declaring_area_id`), and an optional `delete: bool`. At the top of the script `delete` is normalized into a local `_delete` var. Then a `choose:` block branches on feature name — `Manifest`, `Shoot Zone`, `Root Zone`, generic-select (default), generic-component (when `Component:` override is set). **Each branch computes its canonical object_id first**, then short-circuits on `_delete` (calling `labeled_feature_entities` with `delete: true` and stopping), and only after the short-circuit does it run any feature-specific work — option-pool resolution, manifest entity enumeration, etc. This ordering is essential: on the delete path the labels that drive pool resolution have already been removed, so deferring the short-circuit until after pool resolution would fall through into the "no options resolved" error branch instead of retracting the entity. On the create path, the script reads `labels(declaring_area_id)` to pull every override (icon, initial, min/max/step, unit, device_class), parses `Provides Options: <F>: a|b=Label|c` for static option lists, and resolves the scope entity set (`area_entities + device_entities` / floor union / global pool) to collect dynamic options from entities labeled `Provides Option: <F>` (with `Provides Option <F>: <CustomLabel>` overrides).
+
+- **`script.labeled_feature_entities`** — *publishes MQTT*. Generic discovery creator and retract helper. Builds the discovery JSON from named fields (with an `extra:` dict for arbitrary additions). `delete: true` publishes an empty retained payload to retract the entity. `create_mode` (`always` (default) | `if_missing` | `never`) controls when the discovery config is (re)published — `if_missing` skips publish when the entity already exists; `never` skips the discovery publish entirely so the call only seeds state/attributes against an already-created entity. `initialize_mode` (controls `initial_state`) and `attributes_mode` (controls `initial_attributes`) both take `set_if_missing` (default) | `always` | `never`. `component` is constrained to HA's supported MQTT discovery components (closed dropdown). Routes errors through `script.labeled_feature_error_mode`.
+
+The ownership boundary is: *the sensor exposes only what the automation must see to trigger and diff (which (scope_id, label) pairs exist, with what component); the per-feature script owns canonical naming and every feature-specific knob, reading the area's labels fresh at dispatch.* This mirrors the existing Leader/Follower pattern (sensor exposes derived state, automation reacts, scripts do side-effects) but pushes feature-specific resolution — including object_id derivation — all the way to the script. Adding a new built-in area feature is a one-place change: add a `choose:` branch to `labeled_feature_area` that knows its canonical object_id, its short-circuit-on-`_delete` block, and its create-side payload builder. The sensor, the automation, and `labeled_feature_entities` never need to change.
 
 
-### Media Functions
-- play/pause
-- next
-- previous
-  
-- mute/unmute
-- volume up
-- volume down
-   
-- task screen on/off
-- input select
+## Scope semantics
+The scope prefix on a `Provides:` label decides three things together: where the generated entity lives, what entity pool it draws from, and which Option labels participate.
 
+| Label on area | Scope | Dynamic-option pool for select features | `scope_id` used in object_id |
+|---|---|---|---|
+| `Area Provides: <F>` | `area` | `area_entities(this_area)` + entities of `area_devices(this_area)` | `<this_area_id>` |
+| `Floor Provides: <F>` | `floor` | union over `floor_areas(this_area's floor)` | `<floor_id_of_this_area>` |
+| `Provides: <F>` (bare) | `none` | **entire entity pool** (no scope filter applied) | `<this_area_id>` — entity lives in the area carrying the label, but consumes from the global pool |
 
-### Light Functions
-The `labeled_feature_follower` script supports the `light` domain in its direct-value path. When a value label such as `FEATURE_NAME enable: 75` is present on a light entity, it calls `light.turn_on` with `brightness_pct` set to that value (clamped to 0–100). Lights without a numeric value label fall through to the turn_on/turn_off fallback path.
+Floor-scoped declarations on multiple areas in the same floor are deduplicated by `scope_id` (one floor-wide entity, not one per area).
 
-- light on/off 
-- light up
-- light down
-  
-- task light on/off
-- night on/off
+Matching Option labels on entities follow the same scope-prefix convention:
 
-### Night Functions
-There are a couple additional scripts that are used to support night time / sleep timeouts when using the buttons. When configuring the buttons, I integrate awareness of if media is playing or not, as well as if it's in night mode. This allows a small 2 button device (with double press and holds) to support a tremendous number of functions. 
+| Label on entity | Contributes to |
+|---|---|
+| `Area Provides Option: <F>` | Area-scoped `<F>` features in the entity's area |
+| `Floor Provides Option: <F>` | Floor-scoped `<F>` features in the entity's floor |
+| `Provides Option: <F>` (bare) | **None-scoped `<F>` features anywhere** (any area carrying bare `Provides: <F>` accepts this entity into its pool) |
 
-I utilize these by checking for the conditions in the button scripts. First by seeing if media is playing, then calling the relevant media / light functions, and if it's night mode the sleep timer reset or cancel script.
+`(scope-prefix)Provides <F> Exclude: True` on an entity opts it out at the matching scope.
 
-The sleep timeout script (`script.labeled_feature_sleep_timeout`) uses `mode: restart`, so calling it again always resets the full countdown from zero. It runs the following steps:
+## Built-in feature catalog (v1)
 
-1. Capture original volumes for all area media players.
-2. Wait the configured timeout (default 15 minutes).
-4. Halve the volume on every area media player.
-5. Wait 1 minute.
-6. Mute all area media players.
-7. Wait 1 minute.
-8. Seek back 30 seconds every 30 seconds × 20 iterations (≈ 10 minutes) — keeps playback position near where the user fell asleep.
-9. Unmute all area media players.
-10. Restore each media player to its original volume level.
+| FeatureName | Trigger | Component | Generates | Notes |
+|---|---|---|---|---|
+| `Manifest` | Implicit — one per area in registry | `sensor` | `sensor.area_manifest_<area_id>` | State is `entity_count`; attributes carry `area_id`, `area_name`, `entity_ids`, `device_ids`, `labels` (label → entity-id list, restricted to entities in the area). Mode `always` — refreshes every trigger. |
+| `Shoot Zone` | `(Area\|Floor\|)Provides: Shoot Zone` | `sensor` | `sensor.<scope_id>_vpd` | Antoine-equation VPD (kPa, pressure device_class). Pulls temp + humidity sensors from the scope entity set, averages Celsius-converted temps, returns `unavailable` if either side is empty. |
+| `Root Zone` | `(Area\|Floor\|)Provides: Root Zone` | `number` | `number.<scope_id>_tracked_psi` | 0–2000 PSI by default, step 0.1, mode `box`, optimistic. Initial state 0 with `initialize_mode: set_if_missing` so user-edited values survive re-publishes. |
+| `<UserDefined>` | `(Area\|Floor\|)Provides: <UserDefined>` and/or `(Area\|Floor\|)Provides Options: <UserDefined>: a\|b\|c` | `select` (overridable via `Provides <F> Component:`) | `select.<scope_id>_<slug(F)>` | Options resolved from entity `Provides Option:` labels, static `Provides Options:` labels, or both combined (static first, dynamic appended). |
 
-The Sleep Timeout Cancel Restore automation watches for `script.labeled_feature_sleep_timeout` to transition from `on` to `off`. If `trigger.from_state.attributes.original_volumes` is non-empty (i.e. the script was stopped before normal completion), it reads the stored volumes directly from the script's prior state attribute, unmutes all area players, and restores each to its original volume level. No `input_text` helper is required - volumes are stored entirely in the script's `original_volumes` top-level variable attribute while it runs.
+When `Provides <F> Component:` overrides the default for a user feature, the script publishes a generic discovery payload for the chosen component (`number`/`switch`/`text`/`sensor`/`binary_sensor`). `number` honors `Provides <F> Min:` / `Max:` / `Step:` labels with sensible defaults (0/100/1).
 
-> [!NOTE] Warning
-Because only 1 instance of the script can run at once, this means you'll need to create a separate automation/blueprint/labels for each user who wants to utilize the sleep functionality. It'd be great to find a way to eliminate this pain point.
+## Label catalog (Area Based)
 
+**On areas:**
 
-- When Playing
-	- lights off, background music off & reset sleep timer 
-	- pause & cancel sleep timer
-	- (double) go back 30 seconds & reset sleep timer - should 30 be dynamic?
-	- (double) go forward 30 seconds & reset sleep timer - should 30 be dynamic?
-	- (hold) volume up & reset sleep timer 
-	- (hold) volume down & reset sleep timer
+```
+(Area |Floor |)Provides: <FeatureName>                                  # create the feature
+(Area |Floor |)Provides Options: <FeatureName>: <v1>|<v2=label2>|<v3>   # static options for a select
+(Area |Floor |)Provides <FeatureName> Initial: <value>                  # initial state
+(Area |Floor |)Provides <FeatureName> Icon: mdi:foo                     # icon override
+(Area |Floor |)Provides <FeatureName> Component: <component>            # override default component (select)
+(Area |Floor |)Provides <FeatureName> Min: <number>                     # number component
+(Area |Floor |)Provides <FeatureName> Max: <number>                     # number component
+(Area |Floor |)Provides <FeatureName> Step: <number>                    # number component
+(Area |Floor |)Provides <FeatureName> Unit: <string>                    # unit_of_measurement
+(Area |Floor |)Provides <FeatureName> Device Class: <string>            # device_class
+```
 
-- Not Playing
-	- lights off & cancel sleep timer
-	- play & reset sleep timer
-	- (double) previous track
-	- (double) next track
-	- (hold) Ad-Toggle
-	- (hold) night mode on/off
+**On entities (for select-feature option pools):**
+
+```
+(Area |Floor |)Provides Option: <FeatureName>                           # contribute to the pool
+(Area |Floor |)Provides Option <FeatureName>: <custom_dropdown_label>   # override displayed label
+(Area |Floor |)Provides <FeatureName> Exclude: True                     # opt out of the pool
+```
+
+## Static + dynamic option pools
+Three ways to populate a select's options, combinable:
+
+1. **Pure dynamic** — only `Provides: <F>` on the area. Options = entities labeled `(scope-prefix)Provides Option: <F>` in scope. Custom display labels via `(scope-prefix)Provides Option <F>: <label>` on the entity. Falls back to `friendly_name` if no override.
+2. **Pure static** — only `Provides Options: <F>: a|b|c` on the area. (Implies `Provides: <F>` if not also declared.) Pipe-delimited; `value=label` form supported (`Provides Options: Mode: all=All|none=None|presence=Area Presence`).
+3. **Combined** — both labels present. Static options first, dynamic entities appended.
+
+The pipe delimiter (`|`) was chosen because label values can contain commas (friendly names). Whitespace is trimmed around each segment.
+
+## Deletion semantics
+When a `Provides:` label is removed from an area (or the area itself is deleted), the next `areas` attribute change will reflect that the corresponding `expected` triple has disappeared. The diff in `automation.labeled_feature_areas` puts that triple in the `removed` list, which calls `script.labeled_feature_entities` with `delete: true`. That publishes an **empty retained payload** to `homeassistant/<component>/<object_id>/config` — the standard MQTT discovery retract — and HA tears the entity down on the next discovery scan.
+
+Renaming a feature (e.g. `Audio Mode` → `Speaker Mode`) appears as one remove + one add in the same trigger, dispatched in that order, so the old discovery topic is retracted before the new one publishes.
+
+## Adding a new built-in area feature
+1. Add a `choose:` branch to `script.labeled_feature_area` keyed on the new feature name. The branch must:
+   - Compute its canonical `_obj` (object_id) **first**.
+   - Short-circuit on `_delete` immediately after — call `script.labeled_feature_entities` with `delete: true` and `stop:`. Skipping this step or placing it after any label-resolution work will cause delete dispatches to fall through into the create path's error branches (the labels that drive resolution are already gone by the time the diff fires).
+   - Only after the short-circuit, run any feature-specific label resolution and call `labeled_feature_entities` to publish the discovery payload.
+2. Document the new feature in the catalog table above.
+3. **No sensor changes required** — the sensor's `label_map` already exposes every `(scope_id, label)` pair with `component: select` by default. If the new feature needs a non-`select` default component, a `(Area |Floor |)Provides <Label> Component: <comp>` modifier label on the declaring area covers it without touching the sensor.
+4. **No automation changes required** — `labeled_feature_areas` is feature-agnostic and routes everything through the script.
+
+User-declared features that just need a different component don't need any of the above — the `Provides <F> Component:` label routes through the generic component branch and uses sensible defaults.
+
 
 
 
