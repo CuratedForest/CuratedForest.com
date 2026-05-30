@@ -73,8 +73,8 @@ One of the limitations of blueprints are that you can only have 1 object per blu
 	- A *generic feature dispatcher* — it knows nothing about specific button devices. Given a generic feature name (e.g. `Lights Off`, `Volume Up`, `Fan On`, `Night`, …) plus a scope it resolves the right entities in the scope and runs the correct service call against them.
 	- Resolution order: explicit `(Area |Floor |)Follower: <Feature>` labels first, falling back to a per-feature default domain (e.g. `light` for `Lights Off`). Both paths honor `<scope-prefix><Feature> Exclude: True` to opt entities out.
 	- See the **Labeled Feature Generics** section below for the full feature catalog, the resolution algorithm, and the `toggle` modifier behavior.
-- Per-device Button Mapping Scripts (e.g. `script.labeled_feature_somrig`)
-	- Translate a specific button-device family's raw event names (`1_short_release`, `2_double_press`, etc.) plus contextual state (e.g. whether media is currently playing) into one or more calls to `labeled_feature_generics`.
+- Per-device Button Mapping Scripts (e.g. `script.labeled_feature_somrig`, `script.labeled_feature_styrbar`, `script.labeled_feature_symfonisk`)
+	- Translate a specific button-device family's raw event names (`1_short_release`, `2_double_press`, `brightness_move_up`, `dots_1_long_press`, etc.) plus contextual state (e.g. whether media is currently playing) into one or more calls to `labeled_feature_generics`.
 	- One mapping script per button-device family. See the **Button Mapping Scripts** section below.
 - Labeled Feature Areas (Automation)
 	- Diffs the `label_map` attribute on `sensor.labeled_feature_areas_state` and dispatches creates / deletes to `script.labeled_feature_area`.
@@ -341,6 +341,19 @@ Most labels below apply to both leaders and followers with the same shape; rows 
 > [!NOTE] Note
 > FEATURE_NAME (Enable|Disable): A_STRING
 
+### Default truth function (when no Enable/Disable/Direction label is set)
+
+When a leader carries `(Area |Floor |)Leader: <F>` but **no** `<F> Enable:` / `<F> Disable:` / `<F> Increasing:` / `<F> Decreasing:` label, the Labeled Features State template sensor falls back to a default truth function for `enabled`. Two rules are OR'd:
+
+1. **State equals the feature name (case-sensitive).** This is the lightweight default for option-style leaders. If the leader's state string is exactly `<F>`, `enabled = true`. This is why `input_select.house_mode` carrying just `Leader: Night` works as expected — when the selector is on `"Night"`, the `Night` feature is enabled; on `"Day"` or anything else it is not. Per the case-sensitivity rule for label keywords and feature names, the comparison is exact (not case-insensitive) — `Leader: Night` requires the option to be exactly `Night`, not `night` / `NIGHT`.
+2. **State is a generic truthy value.** Covers boolean leaders (`switch`, `binary_sensor`, `input_boolean`, `device_tracker`, …). The truthy set is `on`, `true`, `home`, `open`, `detected`, `active`, `unlocked` (compared case-insensitively).
+
+`event` and `button` domains always evaluate to `enabled = true` because their entities don't carry persistent boolean state — every change is a "fire".
+
+`Invert: True` still applies *after* the default rule, just like with Direction.
+
+If neither rule fits the leader's state model (e.g. a `sensor` whose value is a number and you want a specific value to count as "enabled"), use `(Area |Floor |)<F> Enable: <value>` to pin the truth function explicitly.
+
 
 ## Automation Labels
 Labels can be used to change the way the automation runs too! Right now this only supports changing `Error Mode`, but could potentially support more in the future. When 
@@ -382,8 +395,14 @@ For each feature, the entity's labels are parsed into a list of *action items*. 
 
 `<tag>` is a free-form word placed immediately after the `Script` / `Extra Script` / `Feature` / `Extra Feature` keyword. Labels with no tag are sorted *last* — see Step 3.
 
+> [!WARNING] Tag values must be single words
+> Tags are parsed as the single whitespace-separated token following the `Script` / `Extra Script` / `Feature` / `Extra Feature` keyword. **Tags with spaces are not supported** (e.g. `Setup A` is not a valid tag — the parser would treat `A` as the start of the value). If you need multi-word tags, use a separator like `-` or `_` (e.g. `Setup-A`, `setup_a`).
+
 > [!NOTE] Replacement vs Additive
 > The `Script` / `Feature` keywords are **replacement-style** — declaring any of them tells the loop "I want to control what dispatches for this state; don't auto-fire the implicit feature." The `Extra Script` / `Extra Feature` keywords are **additive** — they add to whatever the loop was already going to do (which may or may not include the implicit feature depending on whether any non-Extra Script/Feature label is present).
+
+> [!NOTE] `<F>: <state_value>` on Leaders
+> On a leader entity, a label of the form `<F>: <state_value>` (no `Script` / `Feature` / `Extra` / `Enable` / `Disable` keyword between the feature name and the colon) is treated as a **shorthand implicit-feature item**. When the leader's `current_value` matches `<state_value>` at trigger time, the loop emits a `feature` action item targeting `<F>` with `leader_enabled = true`. This lets a single button-style leader carry several state→feature mappings without writing explicit `Feature` labels for each one. The shorthand sits with the no-tag, no-variant items in the sort order. Any matching shorthand counts as a "replacement-style" declaration — it drops the *current* feature's implicit item the same way an explicit `<F> Script: …` would.
 
 ### Step 3 — Sort the action list
 Items in the array are sorted:
@@ -570,12 +589,17 @@ For each call, the script resolves a target entity set as follows:
 This means a user can opt-in entities by labeling them `Area Follower: <Feature>` (most precise), or just rely on the domain default (e.g. all `light` entities in the area for `Lights Off`), and use `Exclude: True` to remove a specific entity from the fallback. Exclude has no effect when explicit follower labels are present because at that point the user has already deliberately opted-in the desired entities.
 
 #### `toggle` modifier
-`labeled_feature_generics` accepts a `toggle` boolean field (passed through automatically by `labeled_feature_follower` and by mapping scripts that wish to force a toggle for a given action). When `toggle: true`:
+`labeled_feature_generics` accepts a `toggle` boolean field (passed through automatically by `labeled_feature_follower` and by mapping scripts that wish to force a toggle for a given action). When `toggle: true`, generics **does not** dispatch a single service call against the resolved entities. Instead, for each entity in `final_targets` it:
 
-- `light` features → `light.toggle`
-- `fan` features → `fan.toggle`
-- `media_player.media_play_pause` features (`Media Toggle`, `Media Play`, `Media Pause`) → `media_player.media_play_pause` (already a toggle); other media features such as `Media Next`, `Media Seek Forward`, `Volume Up`, etc. → Error Mode (toggle is not meaningful)
-- `Ads` / `Night` → already-`homeassistant.toggle` semantics, the flag is a no-op
+1. Evaluates whether the feature is currently enabled on that entity, using the same truth function the Labeled Features State template sensor applies to Leaders:
+   - `(scope-prefix)<F> Enable: <v>` / `Disable: <v>` labels on the entity, first;
+   - else the default truth — `state == <F>` (case-sensitive) OR `state in ['on','true','home','open','detected','active','unlocked']`;
+   - `(scope-prefix)<F> Invert: True` flips the result after.
+2. Calls `script.labeled_feature_follower` with `leader_enabled` set to the opposite of currently_enabled and `toggle: false` (the direction has already been computed; the follower just runs its standard per-entity action).
+
+Per-feature toggle semantics live in the follower (which already owns Enable/Disable/Invert/domain action for the standard Leader → Follower flow), not in generics. There is **no** per-domain "toggle service" branch (`light.toggle`, `fan.toggle`, `media_player.media_play_pause`, `homeassistant.toggle`); the follower picks the right action per entity based on its labels and domain.
+
+Evaluation is **per-entity, not aggregate**: a `Screen` feature resolved to 3 followers (two currently enabled, one disabled) dispatches one "set disabled" call to the two enabled entities and one "set enabled" call to the disabled one. If you want aggregate "any-on wins" semantics, that has to be a per-feature design decision — set Enable/Disable values that line up on the same direction for all followers.
 
 #### Generic feature catalog
 
@@ -588,20 +612,22 @@ This means a user can opt-in entities by labeling them `Area Follower: <Feature>
 | `Media Previous` | `media_player` (most-recently-active) | `media_player.media_previous_track` | Error Mode |
 | `Media Seek Back` | `media_player` (most-recently-active) | `media_player.media_seek` `seek_position: max(current − 30s, 0)` — **silently falls back to `media_player.media_previous_track`** when the target's `supported_features` doesn't have the `SUPPORT_SEEK` bit (1024) set | Error Mode |
 | `Media Seek Forward` | `media_player` (most-recently-active) | `media_player.media_seek` `seek_position: current + 30s` — **silently falls back to `media_player.media_next_track`** when the target lacks `SUPPORT_SEEK` (1024) | Error Mode |
-| `Volume Up` | `media_player` (most-recently-active) | `media_player.volume_set` w/ `volume_level: min(current + 0.07, 1.0)` (7% step, single target) | Error Mode |
-| `Volume Down` | `media_player` (most-recently-active) | `media_player.volume_set` w/ `volume_level: max(current − 0.07, 0.0)` (7% step, single target) | Error Mode |
+| `Volume Up` | `media_player` (most-recently-active) | `media_player.volume_set` w/ `volume_level: min(current + 0.07, 1.0)` (7% step, single target) — **stepping** (see below) | Error Mode |
+| `Volume Down` | `media_player` (most-recently-active) | `media_player.volume_set` w/ `volume_level: max(current − 0.07, 0.0)` (7% step, single target) — **stepping** | Error Mode |
 | `Lights On` | `light` | `light.turn_on` | `light.toggle` |
 | `Lights Off` | `light` | `light.turn_off` | `light.toggle` |
-| `Lights Up` | `light` | `light.turn_on` w/ `brightness_step_pct: +10` | `light.toggle` |
-| `Lights Down` | `light` | `light.turn_on` w/ `brightness_step_pct: -10` | `light.toggle` |
+| `Lights Up` | `light` | `light.turn_on` w/ `brightness_step_pct: +10` — **stepping** | `light.toggle` |
+| `Lights Down` | `light` | `light.turn_on` w/ `brightness_step_pct: -10` — **stepping** | `light.toggle` |
 | `Fan On` | `fan` | `fan.turn_on` | `fan.toggle` |
 | `Fan Off` | `fan` | `fan.turn_off` | `fan.toggle` |
-| `Fan Up` | `fan` | `fan.increase_speed` | `fan.toggle` |
-| `Fan Down` | `fan` | `fan.decrease_speed` | `fan.toggle` |
-| `Ads` | label-only (no domain fallback) — Error Mode if missing | `homeassistant.toggle` | `homeassistant.toggle` |
-| `Night` | label-only (no domain fallback) — Error Mode if missing | `homeassistant.toggle` | `homeassistant.toggle` |
+| `Fan Up` | `fan` | `fan.increase_speed` | — (toggle delegates to follower; see below) |
+| `Fan Down` | `fan` | `fan.decrease_speed` | — (toggle delegates to follower; see below) |
 
-The `Volume Up` / `Volume Down` step is fixed at 7% and is applied via `volume_set` (rather than the integration's `volume_up` / `volume_down` defaults) so the increment is deterministic across integrations. The `Lights Up` / `Lights Down` step is fixed at 10% for now. The `Ads` and `Night` features have no sensible domain fallback (every `input_boolean` in the area isn't the right answer), so they require an explicit `(Area |Floor |)Follower: Ads` / `Follower: Night` label and will Error Mode if nothing is found.
+The `Volume Up` / `Volume Down` step is fixed at 7% and is applied via `volume_set` (rather than the integration's `volume_up` / `volume_down` defaults) so the increment is deterministic across integrations. The `Lights Up` / `Lights Down` step is fixed at 10% for now.
+
+**Unknown / label-only features** (anything not in the catalog above — for example `Screen`, `TV Input`, `Bright`, `Accent`, `Ads`, `Night`, or any user-defined feature) resolve through the standard 4-step Provides resolver and then **delegate per-entity to `script.labeled_feature_follower`**. The follower applies the entity's own `(scope-prefix)<F> Enable:` / `Disable:` / `Invert:` / `Toggle:` labels and dispatches the correct domain-specific action. This is how a single `Area Provides: Screen` (or `(Area)Follower: Screen` plus `Screen Enable: HDMI1` / `Screen Disable: standby`) label on an entity is enough to make the feature work — no catalog entry is required, no service-call branch in generics is needed.
+
+The catalog is therefore reserved for features that need *non-trivial* dispatch logic — media-player transport (most-recently-active target selection), seek with fallback to track-skip, stepping (hold loop + accumulator), light brightness step, etc. Plain "on/off/toggle this thing" features are covered by the unknown-feature follower-delegation path and don't need entries.
 
 ##### Media-player target selection (transport + volume + seek)
 
@@ -619,6 +645,26 @@ This is also what makes the seek-fallback behaviour useful: the seek check inspe
 
 Lights, fans, and `Ads` / `Night` features are unaffected — they still target the full `final_targets` set.
 
+#### Stepping / hold loop (Volume Up/Down, Lights Up/Down)
+
+Four features in the catalog are *stepping* features: `Volume Up`, `Volume Down`, `Lights Up`, `Lights Down`. Each one runs in one of two modes depending on whether the caller passed a `leader_entity_id`:
+
+- **One-shot** — caller did not pass `leader_entity_id` (manual dispatch, or a mapping script that just wants a single step). The script fires the underlying service call exactly once.
+- **Held / repeating** — caller passed `leader_entity_id` (typically the button entity that mapped into this dispatch). The script enters a 300 ms repeat loop that exits as soon as `states(leader_entity_id)` changes off its initial value — i.e. the user releases the button, or the button entity fires another event. A 200-iteration safety cap (~60 s of continuous holding at 300 ms) protects against a stuck leader.
+
+The two modes are chosen automatically — mapping scripts (and any future button-family dispatcher) just need to forward `leader_entity_id` to get repeat-while-held behavior for free. There is no per-feature "loop" flag and no per-mapping-script loop code; the loop lives in `labeled_feature_generics` exactly once.
+
+Inside the loop:
+
+- **Scope, Provides resolution, Exclude filtering, and most-recently-active media-player target selection all run once before the loop starts.** Every tick reuses the same resolved `final_targets` (lights) or `_media_target` (volume).
+- The inter-tick wait uses `wait_template:` watching `states(leader_entity_id) != _hold_initial`, with `timeout: 300 ms` and `continue_on_timeout: true`. On timeout the loop ticks forward and re-fires the service call; on the leader emitting a new event (typically `*_long_release` ~50–150 ms after physical release), the wait resolves immediately, the `while:` re-evaluates, and the loop exits with <50 ms latency instead of waiting out a full inter-step interval. (`wait_template:` is used rather than `wait_for_trigger:` because trigger entity_ids cannot be templated at script-load time.)
+
+**Volume Up / Volume Down use a local accumulator** (not a re-read of `state_attr(target, 'volume_level')` each tick). Before the loop the script snapshots the starting volume level once into `_vol_start`; each iteration computes `[_vol_start ± 0.07, 0.0..1.0] | min/max` into the same `_vol_start` local and calls `media_player.volume_set` with that absolute value. State is never read inside the loop. This is critical for integrations like `lnxlink` whose state echoes lag the write — reading mid-loop would race the echo, causing the value to stall or oscillate; the accumulator pattern guarantees each `volume_set` call carries a unique, monotonically increasing (or decreasing) absolute value.
+
+**Lights Up / Lights Down use HA's built-in `brightness_step_pct`** on each iteration's `light.turn_on` call. The light integration owns the relative arithmetic, so no accumulator is needed — the script just re-fires the same call each tick.
+
+Fan Up / Fan Down (`fan.increase_speed` / `fan.decrease_speed`) intentionally stay one-shot — the integration already owns a coarse speed table, so repeat-while-held isn't meaningful.
+
 #### Calling `labeled_feature_generics` directly
 The script accepts these fields (most are pass-through metadata from the caller):
 
@@ -635,7 +681,10 @@ When wired in via the standard Leader → Follower flow, all of these are passed
 ### Button Mapping Scripts
 Mapping scripts are how a specific button device's raw events get translated into generic feature calls. They are short branching scripts: read the raw `feature` string (which is the event name from the button entity, e.g. `1_short_release`), evaluate any contextual state needed for the device family (typically "is anything in this area currently playing media?"), and call `script.labeled_feature_generics` one or more times with the appropriate generic feature.
 
-Each new physical button device family gets its own mapping script. There is currently one mapping script:
+Each new physical button device family gets its own mapping script. There are currently three mapping scripts:
+- `script.labeled_feature_somrig` — IKEA Somrig / E2123 (dots).
+- `script.labeled_feature_styrbar` — IKEA STYRBAR (4-button + dimmer wheel).
+- `script.labeled_feature_symfonisk` — IKEA SYMFONISK Gen 2 Sound Remote.
 
 #### `script.labeled_feature_somrig`
 Maps the IKEA Somrig (and other 2-button) device events into generic feature calls. The Somrig produces events of the form `1_short_release`, `1_long_press`, `1_double_press`, and similarly for button 2 (other variants like `1_long_release` and `1_initial_press` are ignored). The IKEA E2123 (dots) variant produces `dots_N_*` events — these are mapped to `N_*` first so both device types share the same logic.
@@ -665,9 +714,9 @@ Only the canonical "user did the thing" events — `*_short_release`, `*_double_
 
 The `1_double_press` Not-Playing branch always calls `labeled_feature_generics` with `toggle: true` so the fan flips state regardless of the caller-passed toggle value. Every other branch passes through the incoming `toggle` value unchanged (so a `Toggle: True` label on the button entity itself is still honored everywhere it makes sense).
 
-**Long-press repeat behavior:** the three *stepping* long-press branches — `1_long_press` Playing (`Volume Up`), `1_long_press` Not Playing (`Lights Up`), and `2_long_press` Playing (`Volume Down`) — repeat their `labeled_feature_generics` dispatch on a 500 ms cadence, in a loop guarded by a `while:` that watches the leader entity's state. The loop exits as soon as the leader's state changes (the user releases the button or presses something else, causing the button entity to emit a new event), with an additional 200-iteration safety cap (~100 seconds of continuous holding). The `2_long_press` Not-Playing branch dispatches `Ads` as a toggle and intentionally fires once — toggles aren't stepping actions. If the script is invoked manually without a `leader_entity_id`, every long-press branch falls back to a single dispatch (the `while:` requires a real leader entity to observe).
+**Long-press repeat behavior:** the three *stepping* long-press branches — `1_long_press` Playing (`Volume Up`), `1_long_press` Not Playing (`Lights Up`), and `2_long_press` Playing (`Volume Down`) — dispatch the matching generic feature exactly once each, passing `leader_entity_id` through. The repeat-while-held loop lives in `labeled_feature_generics` (see **Stepping / hold loop** above), so somrig does not need its own loop — it just forwards `leader_entity_id` and the generic dispatcher takes care of holding the action open until the button is released. The `2_long_press` Not-Playing branch dispatches `Ads` as a toggle, which is not a stepping feature and runs once.
 
-To keep the visible cadence consistent regardless of how long the underlying `media_player` / `light` service calls take to confirm, the loop uses two reinforcing techniques: (1) it dispatches `labeled_feature_generics` via `script.turn_on` rather than a synchronous `action:` call, so each tick returns immediately instead of waiting for the service to acknowledge; and (2) each iteration records its start timestamp and computes the delay as `500 ms − elapsed`, clamped to a 50 ms floor. The combination eliminates almost all jitter even on slow / multi-speaker integrations. Tradeoff: errors raised inside the dispatched `labeled_feature_generics` call do not propagate back to the somrig loop — they're still handled by the generic dispatcher's own Error Mode plumbing (`script.labeled_feature_error_mode` logs/alerts as configured), so unresolved targets / unknown features / unsupported toggles are still visible; only error propagation to the somrig parent is dropped. The one-shot fallback branch (when `leader_entity_id` is missing) keeps the synchronous `action:` shape so manual test calls still bubble errors up normally.
+
 
 `Lights Off` is the one feature the somrig script does not dispatch at the caller's scope: both the Playing and Not-Playing `1_short_release` branches forward `scope: floor` (with `scope_id` set to the leader's resolved floor). This is intentional — a single short-press on any button in the house should clear every light on that floor, not just the area the button happens to live in. Every other generic feature dispatched from somrig uses the scope passed in by the leader automation. Exclude on the leader's feature (`<scope-prefix><leader_feature> Exclude: True`) still applies to the floor-scoped `Lights Off` call because `exclude_feature` is forwarded independently of `scope` / `scope_id`.
 
@@ -685,6 +734,90 @@ Area <button_feature_name> Arg feature: [leaders].[feature_leader].[current_valu
 This is the standard "no-tag Script on a Leader" pattern: when the button's state changes (i.e. it emits a new event), the `Labeled Feature Leaders` automation dispatches `labeled_feature_somrig` through the loop's `script` action item with `feature` set to the event string from the button entity's state, plus all the standard pass-through fields. Because the `Area <button_feature_name> Script:` label is replacement-style, the implicit feature dispatch is suppressed and only `labeled_feature_somrig` runs.
 
 Followers within the area (or floor, depending on the leader's scope prefix) participate via their existing `(Area |Floor |)Follower: <GenericFeature>` labels — e.g. `Area Follower: Lights Off`, `Area Follower: Night`. The somrig script doesn't reference those labels directly; it just calls `labeled_feature_generics` for the appropriate generic feature, and that's where label resolution happens.
+
+#### `script.labeled_feature_styrbar`
+Maps the IKEA STYRBAR (4-button + dimmer wheel) device events into generic feature calls. STYRBAR produces these events: `on`, `off`, `brightness_move_up`, `brightness_move_down`, `brightness_stop`, `arrow_left_click`, `arrow_left_hold`, `arrow_left_release`, `arrow_right_click`, `arrow_right_hold`, `arrow_right_release`.
+
+The initial implementation is **lights-only**. The four `arrow_*` events are reserved for future expansion (likely Media Previous / Media Next / Media Seek when playing, or area-feature toggles when not) and currently dispatch nothing — they are present as no-op `choose:` branches with a `# TODO` marker rather than absent, so the script does not raise Error Mode when STYRBAR fires them.
+
+The `*_release` and `brightness_stop` events are deliberately not represented at all. The hold loop inside `labeled_feature_generics` already exits on the leader's state change (see **Stepping / hold loop** above), so the explicit "the user just let go" event isn't needed by this script.
+
+**Inputs:** identical to `labeled_feature_somrig` (`feature`, `leader_feature`, `scope`, `scope_id`, `follower_entity_id`, `leader_entity_id`, `leader_enabled`, `toggle`, `error_mode`). All standard pass-through fields are forwarded on every downstream `labeled_feature_generics` call. `leader_feature` is forwarded as `exclude_feature` on every dispatched call, exactly as in somrig, so `(Area |Floor |)<leader_feature> Exclude: True` on an entity opts it out of every action this script can dispatch.
+
+**Event → generic-feature mapping (all area-scoped):**
+
+| Event | Action |
+|---|---|
+| `on` | `Lights On` (one-shot) |
+| `off` | `Lights Off` (one-shot) |
+| `brightness_move_up` | `Lights Up` — forwards `leader_entity_id`, so generics runs the hold loop until the wheel stops moving |
+| `brightness_move_down` | `Lights Down` — hold loop |
+| `brightness_stop` | ignored (loop exits on state change) |
+| `arrow_left_click` | TODO — no-op stub |
+| `arrow_left_hold` | TODO — no-op stub |
+| `arrow_right_click` | TODO — no-op stub |
+| `arrow_right_hold` | TODO — no-op stub |
+| `arrow_left_release`, `arrow_right_release`, all `*_initial_press` | not represented; falls through silently |
+
+Because the script is lights-only it does not compute `media_playing` — the prologue is reduced from the full somrig version (which still has to inspect every media player in the scope for the volume branches) to just normalized inputs.
+
+**Wiring** is identical to somrig — replace `script.labeled_feature_somrig` with `script.labeled_feature_styrbar` in the label set on the button entity:
+
+```
+Feature Leader
+Area Leader: <button_feature_name>
+Area <button_feature_name> Script: script.labeled_feature_styrbar
+Area <button_feature_name> Arg feature: [leaders].[feature_leader].[current_value]
+```
+
+#### `script.labeled_feature_symfonisk`
+Maps the IKEA SYMFONISK Gen 2 Sound Remote events into generic feature calls. SYMFONISK produces these events: `toggle`, `track_previous`, `track_next`, `volume_up`, `volume_down`, `volume_up_hold`, `volume_down_hold`, `dots_1_initial_press`, `dots_1_long_press`, `dots_1_short_release`, `dots_1_long_release`, `dots_1_double_press`, `dots_2_initial_press`, `dots_2_long_press`, `dots_2_short_release`, `dots_2_long_release`, `dots_2_double_press`.
+
+This script **mixes scopes per event** — the transport keys go global, the volume rocker is split between area-light control on short taps and area-vs-global on long-hold (depending on whether media is playing), and the two `dots_*` buttons each carry their own user-tuned scope. The full prologue from `labeled_feature_somrig` is reused so the volume_*_hold branches can read the same `media_playing` signal somrig uses (including Exclude filtering and the 4-step `Media Player` Provides resolver).
+
+**Inputs:** identical to `labeled_feature_somrig`. `leader_feature` is forwarded as `exclude_feature` on every dispatched call.
+
+**Ignored events:** `*_initial_press` and `*_long_release` for both dots — not represented in the choose: at all.
+
+**Event → generic-feature mapping:**
+
+| Event | media_playing | Scope used | Action |
+|---|---|---|---|
+| `toggle` | n/a | `none` (global) | `Media Toggle` |
+| `track_previous` | n/a | `none` | `Media Previous` |
+| `track_next` | n/a | `none` | `Media Next` |
+| `volume_up` | n/a | caller's scope (area) | `Lights On` — single taps always control area lights, regardless of whether anything is playing |
+| `volume_down` | n/a | caller's scope (area) | `Lights Off` |
+| `volume_up_hold` | playing | `none` | `Volume Up` — forwards `leader_entity_id` (hold loop in generics) |
+| `volume_up_hold` | not playing | caller's scope (area) | `Lights Up` — hold loop |
+| `volume_down_hold` | playing | `none` | `Volume Down` — hold loop |
+| `volume_down_hold` | not playing | caller's scope (area) | `Lights Down` — hold loop |
+| `dots_1_short_release` | n/a | caller's scope (area) | `Screen` with `toggle: true` |
+| `dots_1_double_press` | n/a | caller's scope (area) | `TV Input` with `toggle: true` |
+| `dots_1_long_press` | n/a | `floor` (resolved from `leader_entity_id`/`follower_entity_id`) | `Bright` with `toggle: true` |
+| `dots_2_short_release` | n/a | caller's scope (area) | `Ads` with `toggle: true` |
+| `dots_2_double_press` | n/a | `none` (global) | `Night` with `toggle: true` |
+| `dots_2_long_press` | n/a | caller's scope (area) | `Accent` with `toggle: true` |
+
+The `Screen`, `TV Input`, `Bright`, and `Accent` features are user-defined: they have no entries in `feature_meta`, so they resolve entirely via `(Area |Floor |)Follower: <FeatureName>` (or `Provides:` shorthand) labels on the target entities. `Ads` and `Night` carry the same toggle semantics as everywhere else (`homeassistant.toggle` on whatever's labeled in scope). All six dots_* branches force `toggle: true` regardless of the caller-passed value — every dots button on this remote is explicitly a toggle action.
+
+The volume rocker is deliberately rebound:
+
+- **Single taps** (`volume_up` / `volume_down`) always control **area lights**, on the theory that grabbing the remote and tapping volume in a room with nothing playing should turn the lights on/off, not be a no-op.
+- **Long-hold** (`volume_up_hold` / `volume_down_hold`) branches on `media_playing` in the resolved scope: if anything is playing it acts as global volume (so the remote's volume keys feel "right" regardless of where you're standing); if nothing is playing it dims the area's lights (the natural extension of the single-tap behavior).
+
+The transport keys (`toggle`, `track_previous`, `track_next`) are always **global** (`scope: none`) so the remote works as a house-wide transport regardless of which area it's pressed in. This matches the muscle-memory of a sound-remote: pressing skip should always do the right thing on whatever is currently playing.
+
+`dots_1_long_press` is the only event that **uses floor scope** — the user's `Bright` feature is intentionally a floor-wide toggle. The script resolves the floor id from `leader_entity_id` / `follower_entity_id` via `floor_areas()` in the prologue, so it works regardless of whether the caller passed `scope_id`.
+
+**Wiring** mirrors somrig and styrbar:
+
+```
+Feature Leader
+Area Leader: <button_feature_name>
+Area <button_feature_name> Script: script.labeled_feature_symfonisk
+Area <button_feature_name> Arg feature: [leaders].[feature_leader].[current_value]
+```
 
 #### Adding a new button mapping script
 For a different button family (e.g. IKEA STYRBAR, Hue dimmer, custom MQTT button):
