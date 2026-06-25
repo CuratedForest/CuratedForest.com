@@ -41,23 +41,61 @@ It may also make sense to just convert this logic to python and host it on HACS 
 
 ### What blueprints are necessary 
 One of the limitations of blueprints are that you can only have 1 object per blueprint. That means in order to get this functionality working, you need to install blueprints for the following:
-- Labeled Feature State (Template Sensor)
-	- Tracks timestamps on all the entities with the "Feature Leader" label.
-	- This also allows for tracking the previous state of the entities.
+- Labeled Feature State (Trigger-Based Template Sensor)
+	- Reacts to state changes on entities labeled `feature_leader`, and the manual-override event `labeled_feature_set` (see **Manual Overrides** below).
 	- Maintains these attributes on the sensor: `feature_meta`, `leaders`, `features`.
 		- `feature_meta` - single source of truth catalog of the built-in generic features. Each entry is keyed by canonical Feature Name and carries `{ domain, kind, domain_label }`. `domain` is the HA domain used as a fallback target pool (e.g. `media_player`, `light`, `fan`); `kind` is the internal action key consumed by `labeled_feature_generics`' `choose:` block; `domain_label` is the human-readable provider grouping consumed by the `Provides: <DomainLabel>` entity-context shorthand (so a single `Area Provides: Media Player` opts an entity into every media feature). Adding a new domain grouping is a one-line edit here.
-		- `leaders` - keyed by entity ID: `{ current_value, previous_value, last_changed_timestamp, features }`. The nested `features` dict maps each feature name the entity leads to its pre-computed `{ enabled (post-invert), scope }`. Pre-computing here means the automation never needs to re-evaluate Enable/Disable/Invert labels at trigger time.
-		- `features` - flattened view keyed by feature name with the most recently changed leader's data. Used by argument substitutions (`[features].[feature_name].[enabled]`) in script calls.
-		- **Note:** the `areas` attribute was removed. Area scope/feature resolution depends on the label/area/floor *registries*, and state-based template sensors do not observe registry mutations (label add/remove on an area never triggers a re-render of `state` or attributes). The entire `(Area |Floor |)Provides: <F>` parsing + Manifest + floor-dedup pipeline has been moved into `automation.labeled_feature_areas`, which now triggers directly on `label_registry_updated` / `area_registry_updated` / `floor_registry_updated` / `homeassistant.start`. See **Area Based Features** below.
-	-  `unique_id` to enable entity registry features, UI customization (rename, disable), and stable entity identity across reloads.
+		- `leaders` - keyed by entity_id: `{ current_value, previous_value, last_changed_timestamp }`. Diagnostic and substitution surface — read it from arg substitutions when you need a raw value, a previous value, or a timestamp from the leader that triggered the tick.
+		- `snapshots` - generic persisted-state surface for long-running scripts. Keyed by `snapshot_name` (a short script-chosen identifier, e.g. `sleep_timeout`) → an arbitrary mapping payload. Writes go through `script.labeled_feature_generics` with `feature: Set Snapshot` (see below) which fires the `labeled_feature_snapshot_set` event; the sensor merges the payload into this attribute on the next tick. Used by `script.labeled_feature_sleep_timeout` (snapshot of per-target volume that survives `mode: restart`) and available to any other script that needs the same affordance.
+		- `features` - the first-class observable. Nested by `feature → scope → scope_id → entry`. `scope` is one of `area`, `floor`, `global`. `scope_id` is the area_id / floor_id / `''` for global. Each entry:
+			```
+			{
+			  enabled: bool,                # resolved per-mode (Leader/Any/All)
+			  mode: 'leader' | 'any' | 'all',
+			  last_changed_timestamp: float, # only bumped when `enabled` flips
+			  triggering_leader: str         # entity_id of the leader that drove this tick; '' for manual overrides
+			}
+			```
+		- Example shape:
+			```
+			features:
+			  Night:
+			    floor:
+			      first_floor:
+			        enabled: true
+			        mode: all
+			        last_changed_timestamp: 1234567890.0
+			        triggering_leader: input_select.house_mode
+			    global:
+			      '':
+			        enabled: true
+			        mode: leader
+			        last_changed_timestamp: 1234567890.0
+			        triggering_leader: binary_sensor.front_door
+			  Screen:
+			    area:
+			      tv_room:
+			        enabled: false
+			        mode: leader
+			        last_changed_timestamp: 1234567000.0
+			        triggering_leader: sensor.tv_room_idle
+			```
+	- Resolution modes per `(feature, scope, scope_id)` triple, configured via a label on the sensor entity itself:
+		- `<Scoped F> Mode: Leader` (default) — `enabled` reflects only the leader that drove the current tick. Other leaders mapped to the same triple are ignored for this evaluation.
+		- `<Scoped F> Mode: Any` — `enabled` is the OR over the most recently known evaluation of every leader mapped to the same triple. Useful for "any door open → Open Door is true".
+		- `<Scoped F> Mode: All` — `enabled` is the AND over every leader mapped to the same triple. Useful for "every door closed → Closed House is true".
+		- The label keyword is case-sensitive (`Leader`, `Any`, `All`) and the scope prefix matches the leader's: `Floor Night Mode: All`, `Area Screen Mode: Any`, `Night Mode: Leader` (global).
+	- Per-leader evaluation (Direction, Enable/Disable, default truth, Invert) happens inside the sensor. Its output feeds the per-triple `enabled` computation per the feature's mode.
+	- Features whose label set no longer maps any leader (the user removed every `Leader: <F>` label) are dropped from `features` on the next state-changed tick without further action. Manual-only entries (`triggering_leader: ''`) are not dropped — they were sourced from the override event, not a leader's labels.
+	- `unique_id` to enable entity registry features, UI customization (rename, disable), and stable entity identity across reloads.
 - Labeled Feature Leaders (Automation)
-	- This is where all of the leader logic goes. It calls the follower script when the `leaders` attribute changes.
-	- It detects the last updated timestamp and checks for leaders that have updated since then.
-	- Reads pre-computed `enabled` and `scope` directly from `trigger.to_state.attributes.leaders[entity_id].features[feature_name]` - no label re-evaluation at runtime.
-	- Applies runtime-only filters (Only, Between / Not Between) before running **The Dispatch Loop** (see below) against the leader entity's labels for each detected feature. `Between`/`Not Between` use `now()` which is only available at trigger time.
-	- Direction (`Increasing`/`Decreasing`) is **evaluated in the template sensor** (not the automation). The sensor computes `enabled` based on numeric current vs previous value and stores it in the `leaders` attribute. The automation simply reads the pre-computed `enabled` value.
-	- The implicit `feature` action item produced by the dispatch loop fans out to followers — for each follower resolved by the feature's `(Area |Floor |)Follower: <F>` / `(Area |Floor |)Provides: <DomainLabel>` labels, the loop calls `script.labeled_feature_follower` once.
-	- Use `mode: queued` so that rapid or simultaneous leader state changes are all processed sequentially.
+	- Reacts to `sensor.labeled_features_state.features` and walks the diff of `(feature, scope, scope_id)` entries that actually changed.
+	- Trigger: `state` on `sensor.labeled_features_state`, `attribute: features`. The automation diffs `trigger.from_state.attributes.features` against `trigger.to_state.attributes.features` to find every entry whose `enabled` or `triggering_leader` changed.
+	- For each changed entry, the dispatching leader is `entry.triggering_leader`. For manual overrides (empty `triggering_leader`) the leader-label parsing is skipped and only the implicit feature dispatch fires (so manual sets always fan out to followers regardless of what the labels would have said).
+	- Runtime-only filters (Only, Between / Not Between, Toggle) are applied against `triggering_leader`'s labels — `Between`/`Not Between` use `now()`, which is only available at trigger time.
+	- Direction (`Increasing`/`Decreasing`) is evaluated in the sensor, not the automation. The sensor's per-leader projection step computes the leader's `enabled` based on numeric current vs previous; that flows into the per-triple resolution per the feature's mode.
+	- The implicit `feature` action item produced by the dispatch loop fans out to followers — for each follower resolved by the feature's `(Area |Floor |)Follower: <F>` / `(Area |Floor |)Provides: <DomainLabel>` labels in the entry's scope, the loop calls `script.labeled_feature_follower` once. The scope passed to the follower comes from the entry.
+	- Use `mode: queued` so that rapid or simultaneous changes are all processed sequentially.
 - Labeled Feature Follower (Script)
 	- This is ran by the automation, but because the leader values are passed into the script, you can also run this by hand against individual followers (useful for testing).
 	- It accepts:
@@ -343,7 +381,7 @@ Most labels below apply to both leaders and followers with the same shape; rows 
 
 ### Default truth function (when no Enable/Disable/Direction label is set)
 
-When a leader carries `(Area |Floor |)Leader: <F>` but **no** `<F> Enable:` / `<F> Disable:` / `<F> Increasing:` / `<F> Decreasing:` label, the Labeled Features State template sensor falls back to a default truth function for `enabled`. Two rules are OR'd:
+When a leader carries `(Area |Floor |)Leader: <F>` but **no** `<F> Enable:` / `<F> Disable:` / `<F> Increasing:` / `<F> Decreasing:` label, the Labeled Features State sensor falls back to a default truth function for `enabled`. Two rules are OR'd:
 
 1. **State equals the feature name (case-sensitive).** This is the lightweight default for option-style leaders. If the leader's state string is exactly `<F>`, `enabled = true`. This is why `input_select.house_mode` carrying just `Leader: Night` works as expected — when the selector is on `"Night"`, the `Night` feature is enabled; on `"Day"` or anything else it is not. Per the case-sensitivity rule for label keywords and feature names, the comparison is exact (not case-insensitive) — `Leader: Night` requires the option to be exactly `Night`, not `night` / `NIGHT`.
 2. **State is a generic truthy value.** Covers boolean leaders (`switch`, `binary_sensor`, `input_boolean`, `device_tracker`, …). The truthy set is `on`, `true`, `home`, `open`, `detected`, `active`, `unlocked` (compared case-insensitively).
@@ -356,11 +394,37 @@ If neither rule fits the leader's state model (e.g. a `sensor` whose value is a 
 
 
 ## Automation Labels
-Labels can be used to change the way the automation runs too! Right now this only supports changing `Error Mode`, but could potentially support more in the future. When 
+Labels can be used to change the way the automation runs too! Currently `Error Mode` and `Script Call Mode` are supported.
+
+### Error Mode (on the automation)
+
 ```
 Error Mode: (Silent|Log|Alert|Stop)
 ```
-is applied to the Labeled Leader Automation, it sets the default Error Mode. It will be overridden by Error Mode labels on a Feature at the Leader level.
+
+applied to the Labeled Leader Automation sets the default Error Mode. It is overridden by Error Mode labels on a Feature at the Leader level.
+
+### Script Call Mode (on `sensor.labeled_features_state`)
+
+```
+(Area |Floor |)FEATURE_NAME Script Call Mode: (Blocking|NonBlocking)
+Script Call Mode: (Blocking|NonBlocking)
+```
+
+Controls whether the leader automation **awaits** the `script.*` action items it dispatches.
+
+- **Blocking** (default) — the `script.*` ref is invoked directly. The leader automation's outer `for_each` iteration awaits the script's completion before moving on. This preserves the historical behavior and is the right choice when downstream work depends on the script having finished.
+- **NonBlocking** — the script is invoked via `script.turn_on`, which fire-and-forgets when the target script's mode is `parallel` or `restart`. Required for long-running scripts (e.g. `labeled_feature_sleep_timeout`'s 15-minute fade) so they don't block the leader automation's queued iteration and stall every other feature dispatch for the duration of the script.
+
+Labels live on the `sensor.labeled_features_state` entity (not the leader entity, not the automation). The resolver tries each prefix in turn and uses the first match found:
+
+1. `<scope_prefix><F> Script Call Mode: <X>` — per-feature, scoped (`Area Sleep Timer Script Call Mode: NonBlocking`)
+2. `<F> Script Call Mode: <X>` — per-feature, unscoped (`Sleep Timer Script Call Mode: NonBlocking`)
+3. `Script Call Mode: <X>` — sensor-wide default
+4. Hardcoded fallback: `Blocking`
+
+The same resolver runs on `script.labeled_feature_follower`, so cross-feature script dispatches from followers honor the same mode. `automation.*` and `scene.*` refs are unaffected — they're always invoked directly (the underlying actions are already fire-and-forget on the trigger side). Safe only for scripts whose `mode:` is `parallel` or `restart`; `single`/`queued` scripts still block via `script.turn_on`.
+
 
 > [!NOTE] Implementation Note
 > The Stop/Continue distinction in Error Mode is built on HA's native `continue_on_error: true` action flag. In the current implementation, `continue_on_error: true` is used for all error modes (HA YAML does not support templating this flag dynamically). For `Stop` mode, the error is captured and a manual `stop: error: true` is called immediately after - achieving the same halting behavior while also allowing any log/alert actions to execute first. For `Silent`/`Log`/`Alert` modes execution continues after the error is handled. The Silent/Log/Alert tiers layer on top by suppressing, logging, or notifying about the error accordingly.
@@ -402,7 +466,9 @@ For each feature, the entity's labels are parsed into a list of *action items*. 
 > The `Script` / `Feature` keywords are **replacement-style** — declaring any of them tells the loop "I want to control what dispatches for this state; don't auto-fire the implicit feature." The `Extra Script` / `Extra Feature` keywords are **additive** — they add to whatever the loop was already going to do (which may or may not include the implicit feature depending on whether any non-Extra Script/Feature label is present).
 
 > [!NOTE] `<F>: <state_value>` on Leaders
-> On a leader entity, a label of the form `<F>: <state_value>` (no `Script` / `Feature` / `Extra` / `Enable` / `Disable` keyword between the feature name and the colon) is treated as a **shorthand implicit-feature item**. When the leader's `current_value` matches `<state_value>` at trigger time, the loop emits a `feature` action item targeting `<F>` with `leader_enabled = true`. This lets a single button-style leader carry several state→feature mappings without writing explicit `Feature` labels for each one. The shorthand sits with the no-tag, no-variant items in the sort order. Any matching shorthand counts as a "replacement-style" declaration — it drops the *current* feature's implicit item the same way an explicit `<F> Script: …` would.
+> On a leader entity, a label of the form `<F>: <state_value>` (no `Script` / `Feature` / `Extra` / `Enable` / `Disable` keyword between the feature name and the colon) is treated as a **shorthand implicit-feature item**. When the leader's `current_value` matches `<state_value>` at trigger time, the loop emits a `feature` action item targeting `<F>` with `leader_enabled = true`. This lets a single button-style leader carry several state→feature mappings without writing explicit `Feature` labels for each one. The shorthand sits with the no-tag, no-variant items in the sort order. Any matching shorthand counts as a "replacement-style" declaration — it drops *that feature's* implicit item the same way an explicit `<F> Script: …` would.
+>
+> **Scope to the current feature's iteration.** The dispatch loop runs the shorthand resolution *per `(feature, scope, scope_id)` triple being dispatched on the current tick*, and the shorthand item is only emitted into the iteration whose `feature_name` matches the shorthand's target `<F>`. This matters when a single leader carries shorthand labels for multiple features (e.g. `input_select.house_mode` with both `Day: Day` and `Night: Night`, plus `Leader: Day` and `Leader: Night`): on a `Night → Day` transition the sensor flips both triples in the same tick (`Day.global.''.enabled = true`, `Night.global.''.enabled = false`), and the loop runs once per triple. Only the Day iteration sees the `Day: Day` shorthand replacing its implicit item; the Night iteration still sees its own implicit feature dispatch with `leader_enabled = false`. Without this scoping, the shorthand for the currently-active state would suppress the implicit dispatch of every other feature flipping on the same tick (the historical "Night never disables when state goes to Day" bug).
 
 ### Step 3 — Sort the action list
 Items in the array are sorted:
@@ -492,23 +558,27 @@ Scripts by themselves are helpful, but what really makes them shine is when they
 When an Arg's `<field>` isn't declared by the target script, the feature's resolved `Error Mode` controls the response — `silent`/`log`/`alert` log and proceed with the valid args; `stop` halts the loop for that feature.
 
 ### Argument Substitutions
-Args support a limited substitution syntax to pull values from the Labeled Features State sensor. It only works on Arg label values and currently references `leaders` / `features`, but other attributes can be added in the future.
+Args support a substitution syntax to pull values from `sensor.labeled_features_state`. It works on Arg label values against any attribute on the sensor (`leaders`, `features`, `feature_meta`, anything added later).
 
 Format:
 ```
-<F> [Enable|Disable] Arg <tag> <field>: [leaders].[feature_leader].[current_value]
-<F> [Enable|Disable] Arg <tag> <field>: [features].[feature_name].[enabled]
+<F> [Enable|Disable] Arg <tag> <field>: <attribute>.<dotted.path>
 ```
 
-When evaluating:
-- Get the named attribute from `sensor.labeled_features_state`.
-- Parse it as a dict.
-- `feature_leader` / `feature_name` are placeholders that resolve to the current leader's `entity_id` / the current feature's name; any other key looks up that literal in the dict.
-- The third bracket selects the field. For `leaders`, available fields are `current_value`, `previous_value`, `last_changed_timestamp`, and the nested `features` dict. For `features`, available fields are `leader_entity_id`, `value`, `enabled`, and `timestamp`.
-- The resolved value is passed to the script.
+Examples:
+```
+Area Night Buttons Arg feature: leaders.current_value
+Area Night Buttons Arg feature: leaders.previous_value
+Area Night Buttons Arg enabled: features.Night.floor.first_floor.enabled
+Area Night Buttons Arg timestamp: features.Night.global..last_changed_timestamp
+Area Night Buttons Arg domain: feature_meta.Lights Off.domain
+```
 
-> [!NOTE] TODO
-> Looking for suggestions and ideas on how to make parsing less gross? Maybe regex groups.
+Resolution rules:
+
+1. The value must match `^[A-Za-z_][A-Za-z0-9_]*\.` to be treated as a substitution — anything else is passed through as a literal string.
+2. The first segment names a top-level attribute on `sensor.labeled_features_state`. The remaining dot-separated segments walk into that attribute's nested dicts. An empty segment (`..`) is a literal empty-string key — used for `global` scope's `''` scope_id (see `features.Night.global..enabled`).
+3. Special case for `leaders`. If the first path segment is not a key already present in the `leaders` dict (i.e. it's not an entity_id like `binary_sensor.front_door`), the parser splices the triggering leader's entity_id in as the first key. So `leaders.current_value` resolves to `leaders[<triggering_leader>].current_value` without having to bake the entity_id into the label.
 
 ## Best Practices
 When just labels, it's pretty hard to stray from the intended use. With scripts that's a whole different story. Users are welcome to go about scripts anyway they wish (I'm curious to see the possibilities!), but this is a list of practices I try to adhere to when working with scripts.
@@ -612,8 +682,8 @@ Evaluation is **per-entity, not aggregate**: a `Screen` feature resolved to 3 fo
 | `Media Previous` | `media_player` (most-recently-active) | `media_player.media_previous_track` | Error Mode |
 | `Media Seek Back` | `media_player` (most-recently-active) | `media_player.media_seek` `seek_position: max(current − 30s, 0)` — **silently falls back to `media_player.media_previous_track`** when the target's `supported_features` doesn't have the `SUPPORT_SEEK` bit (1024) set | Error Mode |
 | `Media Seek Forward` | `media_player` (most-recently-active) | `media_player.media_seek` `seek_position: current + 30s` — **silently falls back to `media_player.media_next_track`** when the target lacks `SUPPORT_SEEK` (1024) | Error Mode |
-| `Volume Up` | `media_player` (most-recently-active) | `media_player.volume_set` w/ `volume_level: min(current + 0.07, 1.0)` (7% step, single target) — **stepping** (see below) | Error Mode |
-| `Volume Down` | `media_player` (most-recently-active) | `media_player.volume_set` w/ `volume_level: max(current − 0.07, 0.0)` (7% step, single target) — **stepping** | Error Mode |
+| `Volume Up` | `media_player` (most-recently-active) | `media_player.volume_set` w/ `volume_level: min(current + 0.05, 1.0)` (5% step, single target) — **stepping** (see below) | Error Mode |
+| `Volume Down` | `media_player` (most-recently-active) | `media_player.volume_set` w/ `volume_level: max(current − 0.05, 0.0)` (5% step, single target) — **stepping** | Error Mode |
 | `Lights On` | `light` | `light.turn_on` | `light.toggle` |
 | `Lights Off` | `light` | `light.turn_off` | `light.toggle` |
 | `Lights Up` | `light` | `light.turn_on` w/ `brightness_step_pct: +10` — **stepping** | `light.toggle` |
@@ -623,7 +693,7 @@ Evaluation is **per-entity, not aggregate**: a `Screen` feature resolved to 3 fo
 | `Fan Up` | `fan` | `fan.increase_speed` | — (toggle delegates to follower; see below) |
 | `Fan Down` | `fan` | `fan.decrease_speed` | — (toggle delegates to follower; see below) |
 
-The `Volume Up` / `Volume Down` step is fixed at 7% and is applied via `volume_set` (rather than the integration's `volume_up` / `volume_down` defaults) so the increment is deterministic across integrations. The `Lights Up` / `Lights Down` step is fixed at 10% for now.
+The `Volume Up` / `Volume Down` step is fixed at 5% and is applied via `volume_set` (rather than the integration's `volume_up` / `volume_down` defaults) so the increment is deterministic across integrations. Volume holds tick every 500 ms; lights hold every 300 ms (lights use `brightness_step_pct` so a shorter cadence feels right). The `Lights Up` / `Lights Down` step is fixed at 10% for now.
 
 **Unknown / label-only features** (anything not in the catalog above — for example `Screen`, `TV Input`, `Bright`, `Accent`, `Ads`, `Night`, or any user-defined feature) resolve through the standard 4-step Provides resolver and then **delegate per-entity to `script.labeled_feature_follower`**. The follower applies the entity's own `(scope-prefix)<F> Enable:` / `Disable:` / `Invert:` / `Toggle:` labels and dispatches the correct domain-specific action. This is how a single `Area Provides: Screen` (or `(Area)Follower: Screen` plus `Screen Enable: HDMI1` / `Screen Disable: standby`) label on an entity is enough to make the feature work — no catalog entry is required, no service-call branch in generics is needed.
 
@@ -650,16 +720,16 @@ Lights, fans, and `Ads` / `Night` features are unaffected — they still target 
 Four features in the catalog are *stepping* features: `Volume Up`, `Volume Down`, `Lights Up`, `Lights Down`. Each one runs in one of two modes depending on whether the caller passed a `leader_entity_id`:
 
 - **One-shot** — caller did not pass `leader_entity_id` (manual dispatch, or a mapping script that just wants a single step). The script fires the underlying service call exactly once.
-- **Held / repeating** — caller passed `leader_entity_id` (typically the button entity that mapped into this dispatch). The script enters a 300 ms repeat loop that exits as soon as `states(leader_entity_id)` changes off its initial value — i.e. the user releases the button, or the button entity fires another event. A 200-iteration safety cap (~60 s of continuous holding at 300 ms) protects against a stuck leader.
+- **Held / repeating** — caller passed `leader_entity_id` (typically the button entity that mapped into this dispatch). The script enters a repeat loop that exits as soon as `states(leader_entity_id)` changes off its initial value — i.e. the user releases the button, or the button entity fires another event. The tick cadence is **500 ms** for `Volume Up`/`Volume Down` and **300 ms** for `Lights Up`/`Lights Down` (volume needs a slower step to feel comfortable since it's auditory feedback; brightness wants the snappier rate). A 200-iteration safety cap (~60-100 s of continuous holding at those rates) protects against a stuck leader.
 
 The two modes are chosen automatically — mapping scripts (and any future button-family dispatcher) just need to forward `leader_entity_id` to get repeat-while-held behavior for free. There is no per-feature "loop" flag and no per-mapping-script loop code; the loop lives in `labeled_feature_generics` exactly once.
 
 Inside the loop:
 
 - **Scope, Provides resolution, Exclude filtering, and most-recently-active media-player target selection all run once before the loop starts.** Every tick reuses the same resolved `final_targets` (lights) or `_media_target` (volume).
-- The inter-tick wait uses `wait_template:` watching `states(leader_entity_id) != _hold_initial`, with `timeout: 300 ms` and `continue_on_timeout: true`. On timeout the loop ticks forward and re-fires the service call; on the leader emitting a new event (typically `*_long_release` ~50–150 ms after physical release), the wait resolves immediately, the `while:` re-evaluates, and the loop exits with <50 ms latency instead of waiting out a full inter-step interval. (`wait_template:` is used rather than `wait_for_trigger:` because trigger entity_ids cannot be templated at script-load time.)
+- The inter-tick wait uses `wait_template:` watching `states(leader_entity_id) != _hold_initial`, with `timeout: 500 ms` (volume) or `300 ms` (lights) and `continue_on_timeout: true`. On timeout the loop ticks forward and re-fires the service call; on the leader emitting a new event (typically `*_long_release` ~50–150 ms after physical release), the wait resolves immediately, the `while:` re-evaluates, and the loop exits with <50 ms latency instead of waiting out a full inter-step interval. (`wait_template:` is used rather than `wait_for_trigger:` because trigger entity_ids cannot be templated at script-load time.)
 
-**Volume Up / Volume Down use a local accumulator** (not a re-read of `state_attr(target, 'volume_level')` each tick). Before the loop the script snapshots the starting volume level once into `_vol_start`; each iteration computes `[_vol_start ± 0.07, 0.0..1.0] | min/max` into the same `_vol_start` local and calls `media_player.volume_set` with that absolute value. State is never read inside the loop. This is critical for integrations like `lnxlink` whose state echoes lag the write — reading mid-loop would race the echo, causing the value to stall or oscillate; the accumulator pattern guarantees each `volume_set` call carries a unique, monotonically increasing (or decreasing) absolute value.
+**Volume Up / Volume Down use a local accumulator** (not a re-read of `state_attr(target, 'volume_level')` each tick). Before the loop the script snapshots the starting volume level once into `_vol_start`; each iteration computes `[_vol_start ± 0.05, 0.0..1.0] | min/max` into the same `_vol_start` local and calls `media_player.volume_set` with that absolute value. State is never read inside the loop. This is critical for integrations like `lnxlink` whose state echoes lag the write — reading mid-loop would race the echo, causing the value to stall or oscillate; the accumulator pattern guarantees each `volume_set` call carries a unique, monotonically increasing (or decreasing) absolute value.
 
 **Lights Up / Lights Down use HA's built-in `brightness_step_pct`** on each iteration's `light.turn_on` call. The light integration owns the relative arithmetic, so no accumulator is needed — the script just re-fires the same call each tick.
 
@@ -677,6 +747,83 @@ The script accepts these fields (most are pass-through metadata from the caller)
 - `error_mode` — `silent | log | alert | stop`. Standard Error Mode tiers as elsewhere.
 
 When wired in via the standard Leader → Follower flow, all of these are passed automatically by `labeled_feature_follower` via its dispatch loop's `script` action items (see **The Dispatch Loop**).
+
+#### Persistent Snapshots — the `Set Snapshot` catalog entry
+`Set Snapshot` is a catalog entry that writes a mapping payload into `sensor.labeled_features_state.snapshots[<snapshot_name>]` from inside a script — typically used by long-running scripts that need their working state to survive `mode: restart` re-entries.
+
+The snapshots attribute is keyed by a short script-chosen identifier (e.g. `sleep_timeout`) → an arbitrary mapping payload whose schema is owned by the calling script. Passing `payload: {}` deletes the entry.
+
+Fields (in addition to the standard ones):
+
+- `feature: Set Snapshot` (selects this branch).
+- `snapshot_name` (required) — the key under `snapshots`. Convention: short script-specific identifier like `sleep_timeout`, `audio_mood_in_flight`.
+- `payload` (required, mapping) — the value to store. Empty mapping (`{}`) means "delete the entry."
+
+Behavior:
+
+1. Fires the `labeled_feature_snapshot_set` event with payload `{snapshot_name, payload, timestamp: now().timestamp()}`.
+2. `sensor.labeled_features_state` listens for that event and merges (or, on empty payload, removes) the entry under `snapshots[snapshot_name]`.
+3. Other ticks (`state_changed`, `labeled_feature_set`) carry the snapshots dict through unchanged.
+
+Calling pattern:
+
+```yaml
+- action: script.labeled_feature_generics
+  data:
+    feature: Set Snapshot
+    snapshot_name: sleep_timeout
+    payload:
+      media_player.bedroom_main_audio: 0.45
+```
+
+To clear:
+
+```yaml
+- action: script.labeled_feature_generics
+  data:
+    feature: Set Snapshot
+    snapshot_name: sleep_timeout
+    payload: {}
+```
+
+Reading back:
+
+```jinja
+{{ state_attr('sensor.labeled_features_state', 'snapshots').get('sleep_timeout', {}) }}
+```
+
+This is the persistence surface used by `script.labeled_feature_sleep_timeout` to survive `mode: restart` re-entries. The fade snapshot needs to be read fresh on every dispatch (button mash, Night flip, Media Playing flip), and HA's script-local `variables:` block resets on every restart — so the sensor-attribute round-trip via Set Snapshot is the persistence layer.
+
+#### Manual Overrides — the `Set Feature` catalog entry
+`Set Feature` is a catalog entry that writes an entry into `sensor.labeled_features_state.features` from outside the leader/follower flow. It does not dispatch anything against a domain pool. Use it when scripts, dashboards, or REST clients need to flip a feature without maintaining a synthetic leader entity.
+
+Fields (in addition to the standard ones):
+
+- `feature: Set Feature` (selects this branch).
+- `target_feature` (required) — the feature name whose state to write (e.g. `Night`).
+- `scope` — `area | floor | global`. Matches the `features` attribute's second-level key.
+- `scope_id` — area_id, floor_id, or empty for `global`.
+- `enabled` (boolean, required) — the value to record.
+
+Behavior:
+
+1. Fires the `labeled_feature_set` event with payload `{target_feature, scope, scope_id, enabled, timestamp: now().timestamp()}`.
+2. `sensor.labeled_features_state` listens for that event and writes the entry into `features[target_feature][scope][scope_id] = {enabled, mode, last_changed_timestamp, triggering_leader: ''}`. `mode` is preserved from the existing entry if any; otherwise defaults to `leader`.
+3. `automation.labeled_feature_leaders` sees the change via its normal `attribute: features` trigger and dispatches followers exactly as if a leader had driven the change. The empty `triggering_leader` means leader-label parsing is skipped — only the implicit feature dispatch fires.
+
+Override durability: a manual override on a given `(target_feature, scope, scope_id)` triple is sticky until a leader mapped to that same triple actually changes state. Leader changes for different features (or different scopes of the same feature) do not clobber it. Features with no backing leaders at all remain manual-only because the sensor's drop-orphans logic only drops entries when no leader maps to them; manual entries with `triggering_leader: ''` are exempt.
+
+Calling pattern:
+
+```yaml
+- action: script.labeled_feature_generics
+  data:
+    feature: Set Feature
+    target_feature: Night
+    scope: global
+    scope_id: ''
+    enabled: true
+```
 
 ### Button Mapping Scripts
 Mapping scripts are how a specific button device's raw events get translated into generic feature calls. They are short branching scripts: read the raw `feature` string (which is the event name from the button entity, e.g. `1_short_release`), evaluate any contextual state needed for the device family (typically "is anything in this area currently playing media?"), and call `script.labeled_feature_generics` one or more times with the appropriate generic feature.
@@ -728,7 +875,7 @@ The button event entity should be labeled:
 Feature Leader
 Area Leader: <button_feature_name>
 Area <button_feature_name> Script: script.labeled_feature_somrig
-Area <button_feature_name> Arg feature: [leaders].[feature_leader].[current_value]
+Area <button_feature_name> Arg feature: leaders.current_value
 ```
 
 This is the standard "no-tag Script on a Leader" pattern: when the button's state changes (i.e. it emits a new event), the `Labeled Feature Leaders` automation dispatches `labeled_feature_somrig` through the loop's `script` action item with `feature` set to the event string from the button entity's state, plus all the standard pass-through fields. Because the `Area <button_feature_name> Script:` label is replacement-style, the implicit feature dispatch is suppressed and only `labeled_feature_somrig` runs.
@@ -767,7 +914,7 @@ Because the script is lights-only it does not compute `media_playing` — the pr
 Feature Leader
 Area Leader: <button_feature_name>
 Area <button_feature_name> Script: script.labeled_feature_styrbar
-Area <button_feature_name> Arg feature: [leaders].[feature_leader].[current_value]
+Area <button_feature_name> Arg feature: leaders.current_value
 ```
 
 #### `script.labeled_feature_symfonisk`
@@ -816,11 +963,178 @@ The transport keys (`toggle`, `track_previous`, `track_next`) are always **globa
 Feature Leader
 Area Leader: <button_feature_name>
 Area <button_feature_name> Script: script.labeled_feature_symfonisk
-Area <button_feature_name> Arg feature: [leaders].[feature_leader].[current_value]
+Area <button_feature_name> Arg feature: leaders.current_value
 ```
+
+### Labeled Feature Sleep Timeout
+`script.labeled_feature_sleep_timeout` is a composite-action feature that gradually fades media volume, mutes, holds the playback position with seek-back ticks, then unmutes and restores the original volume — typically used to wind down audio at night without abruptly cutting it off.
+
+It composes with the rest of the system via the standard Leader/Follower dispatch loop. Unlike the per-button mapping scripts it carries no per-event mapping; it's a single resumable side-effect-ful sequence wrapped in `mode: restart`. Cancellation is handled **in-script** — there is no companion automation. Restarting the script during a fade re-evaluates the gate and either restarts the fade or cancel-restores.
+
+#### Gate rule
+On every invocation (whether first-call or `mode: restart` re-entry) the script reads fresh values for two features from `sensor.labeled_features_state.features`:
+
+```
+should_run = night_enabled AND media_playing_enabled
+```
+
+- `night_enabled` — `features[<feature_night>][<scope>][<scope_id>].enabled`. `<feature_night>` defaults to `Night`.
+- `media_playing_enabled` — `features[<feature_media_playing>][<scope>][<scope_id>].enabled`. `<feature_media_playing>` defaults to `Media Playing`.
+
+The `leader_enabled` value passed by the dispatch loop is intentionally **ignored**. The script is dispatched from multiple entry points (button leader, Night follower, Media Playing follower) and each carries its own `leader_enabled`; reading both gate features fresh from the sensor guarantees consistent behavior regardless of which entry point fired.
+
+#### Re-trigger prelude — two branches
+
+Before any gate evaluation runs, the script applies a **two-branch re-trigger prelude** that depends on *what the user did*. Both branches are gated on `original_volumes` being non-empty (i.e. a fade is already in flight):
+
+- **Branch A — stepping interaction in progress (Volume Up/Down hold, Lights Up/Down hold).** The user is actively dialing the volume (or brightness). The hold loop inside `labeled_feature_generics` is writing `media_player.volume_set` against the same player every 300ms. If we restored to the snapshotted "original" we'd race those writes and the volume would bounce. Instead we **re-baseline the snapshot** to whatever `volume_level` currently reads — the user's new "original" is wherever they're dialing to. Subsequent cancel-restore paths (Night-off, Media-off) then correctly restore to this new baseline, not the pre-hold value. One-tick-behind is fine — the user's net interaction (start → hold → release) re-baselines at both press-start and press-release events, so the release dispatch always carries the final committed value.
+
+- **Branch B — discrete event (button short press, Night flip, Media Playing flip).** Restore the snapshotted volume, clear the snapshot, and fall through to the gate. This is the "reset the timer" / "cancel the timer" semantic, depending on what the gate then evaluates to.
+
+The classifier is `_is_stepping`, evaluated against the **triggering leader's current state**:
+
+```jinja
+{{ states(leader_entity_id) | lower | regex_search('(long_press|long_release|hold|_move_)') is not none }}
+```
+
+This matches the canonical hold-in-progress / just-released event names emitted by the IKEA button families currently wired (`*_long_press`, `*_long_release`, `volume_up_hold`, `volume_down_hold`, `brightness_move_up`, `brightness_move_down`, `brightness_stop`). On a state-domain leader (`input_boolean.night_mode`, `media_player.bedroom_main_audio`) the live state is `on`/`off`/`playing`/`paused`/etc and never matches → Branch B runs, which is the correct behavior for Night-off and Media-Playing-off cancels.
+
+After whichever branch ran (or neither, if there was no snapshot in flight), the script falls through to the gate evaluation as if it were a fresh first call — no `stop:`.
+
+Then the gate decides what happens next:
+
+- `should_run == true` → snapshot the media player's current volume (only if the prelude didn't just clear one), then run the fade sequence:
+  1. Wait `sleep_timeout_minutes` (default 15)
+  2. Halve the volume
+  3. Wait 1 minute
+  4. "Mute" via `volume_set: 0` (see **Mute via volume_set: 0** below)
+  5. Wait 1 minute
+  6. Seek back 30 s every 0.5 s × 20 iterations (≈ 10 s) — keeps the playback position "live" during the silent hold; **silently falls back to `media_player.media_previous_track`** when the target's `supported_features` doesn't include `SUPPORT_SEEK` (bit `0x02`) — same pattern as `Media Seek Back` in `labeled_feature_generics`
+  7. **Pause the player** via `media_player.media_pause` — by this point we've seek-back'd well into the past, and the gate has remained `true` for the full timeout window, so the desired end-state is *silent and paused*, not silent-then-resume-mid-show
+  8. Restore the snapshot's volume on the paused player (this also "unmutes" — the previous `volume_set: 0` is naturally undone by the restore, so the next manual play resumes at the right level)
+  9. Clear the snapshot
+- `should_run == false` → cancel-restore. Idempotent — the prelude already cleared the snapshot if there was one, so this branch typically runs as a no-op, then stops.
+
+#### How re-trigger semantics work per entry point
+
+The prelude + gate combination handles every cancellation and arming case. Walking through the cases:
+
+- **Sleep Timer button short-press (mid-fade)** — Trigger state is `*_short_release` → not stepping → Branch B: restore + clear. Gate evaluates `Night AND Media Playing` — both still true (audio still playing, Night still on) → arm a fresh 15-minute timer at the restored full volume. The button becomes the natural "reset the timer" gesture.
+- **Sleep Timer button press (nothing armed yet)** — Prelude both branches skip (snapshot empty). Gate evaluates; arms a fade if both gate features are true.
+- **Volume Up button held (mid-fade)** — Trigger state is `*_long_press` → stepping → Branch A: re-baseline snapshot to current volume. Snapshot now tracks what the user is dialing to (one tick behind). 15-min delay restarts in Step 5. Volume Up's own hold loop continues writing volume_set unimpeded — no race.
+- **Volume Up button just released (mid-fade)** — Trigger state is `*_long_release` → stepping → Branch A: re-baseline snapshot to the volume the user settled on. This is the dispatch that "commits" the new baseline.
+- **Night-off mid-fade** — Trigger state is `off` (or `Day`, from `input_select.house_mode`) → not stepping → Branch B: restore + clear. Gate evaluates `false AND true = false` → Step 3 cancel-restore (no-op, snapshot already cleared), stops. Volume restored, timer cancelled.
+- **Media Playing → false mid-fade (pause / stop)** — Trigger state is `paused`/`idle`/etc → not stepping → Branch B: restore + clear. Gate evaluates false → cancel-restore no-op, stops.
+- **Media Playing → true (fresh arm via the bedroom speaker turning on)** — Prelude both branches skip (no snapshot yet). Gate evaluates `Night AND true = true` → arm. **This is the primary arming path for the bedroom use case**: the button's other follower turns on the media player, the media player going `off → playing` flips `Media Playing.enabled` false → true, the leader automation dispatches this script via the Media Playing follower wiring, and the gate arms the fade. The user doesn't have to press the Sleep Timer button directly.
+- **Play resumed after a Night-off cancel** — Prelude branches skip (Night-off already cleared the snapshot). Gate evaluates `false AND true = false` → no-op cancel-restore, stops. Timer does **not** re-arm. The gate is what protects this case; no separate guard is required.
+
+This is more sophisticated than the previous "Media-Playing-when-in-flight guard." That guard correctly handled the play-after-Night-off re-arm case but blocked the primary arming path through Media Playing (button → media on → Media Playing flips → script dispatched and stopped). The two-branch prelude gets the same protection via the gate (Night is off, gate says `false` regardless of Media Playing) and additionally handles the Volume Up race that a simple universal restore would create.
+
+#### Mute via volume_set: 0
+The script doesn't use `media_player.volume_mute` anywhere. Instead, the "mute" step is just `media_player.volume_set: 0`, and the restore step at the end of the fade (and in cancel-restore) is `media_player.volume_set: <snapshot>` — which naturally "unmutes" since the prior step only set the volume to 0.
+
+Why: some `media_player` integrations (notably some MQTT players and `lnxlink` in certain configs) advertise `SUPPORT_VOLUME_MUTE` via `supported_features` but the underlying device rejects the call at runtime. Rather than capability-checking the bitmask (which can lie), the script sidesteps the question entirely. `volume_set` works on every integration.
+
+The audible result is identical to a real mute: silent during the seek-back hold, restored at the original level on completion. There is no separate "unmute" step in the fade sequence — it's collapsed into the final restore. (Step 7 also dispatches `media_player.media_pause` immediately before the volume restore, so when the user comes back the next morning the player is sitting paused at the original volume rather than mid-track at the volume the fade halved down to.)
+
+#### Seek-back loop tick rate
+The seek-back loop runs **20 iterations at 0.5 s cadence**, with each iteration seeking back 30 s. That's a very tight ~10 s total hold (down from the original 10-minute version), but the rapid back-step keeps the player's cursor pinned well in the past so any auto-advance to the next track or end-of-queue during the silent step is undone before it can take effect.
+
+Seek calls match the `Media Seek Back` pattern in `labeled_feature_generics`:
+
+- **Supported** (`SUPPORT_SEEK` / bit `0x02` of `supported_features` is set) — `media_player.media_seek` with the back-stepped position, wrapped in `continue_on_error: true` so a transient seek failure doesn't stall the loop.
+- **Not supported** — silently falls back to `media_player.media_previous_track` on the same target, also `continue_on_error: true`.
+
+#### Fields
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `media_player` | no | — | **Override.** When set, the script targets this entity_id directly. Otherwise resolved from the Media Playing feature's `triggering_leader`. |
+| `feature_night` | no | `Night` | Feature name to read for the Night gate. |
+| `feature_media_playing` | no | `Media Playing` | Feature name to read for the playing gate. The script also reads `triggering_leader` from this triple to resolve the target media player. |
+| `sleep_timeout_minutes` | no | `15` | Wait before the fade begins. |
+| `scope`, `scope_id` | no | `area` / — | Pass-through from the dispatch loop. Used to key the sensor lookup. |
+| `leader_enabled`, `leader_entity_id`, `follower_entity_id`, `feature`, `leader_feature`, `toggle` | no | — | Standard pass-through. `leader_enabled` and `toggle` are intentionally ignored. |
+| `error_mode` | no | `log` | `silent / log / alert / stop`. Used for the "couldn't resolve media_player" guard. |
+
+#### Required label wiring (minimal — zero Args)
+
+The script has sensible defaults for every Arg, and resolves the target media player from the `Media Playing` feature's `triggering_leader`. **No Args are needed in the normal case** — wire labels only.
+
+**1. Bedroom media player entity (e.g. `media_player.bedroom_main_audio`).**
+Declares the player as the `Media Playing` leader for its area. Its `Enable: playing` label is what makes the sensor record `triggering_leader = <this entity_id>` for the `Media Playing.area.<bedroom>` triple — which is what the script reads to find the player.
+```
+Feature Leader
+Area Leader: Media Playing
+Area Media Playing Enable: playing
+```
+
+**2. The script entity (`script.labeled_feature_sleep_timeout`).**
+Assign the script to the bedroom area in the entity registry, then apply both follower wirings so the script reacts to Night flipping *and* media stopping mid-fade:
+```
+Area Follower: Night
+Area Night Script: script.labeled_feature_sleep_timeout
+
+Area Follower: Media Playing
+Area Media Playing Script: script.labeled_feature_sleep_timeout
+```
+`Area Night Script:` / `Area Media Playing Script:` are replacement-style — they suppress the implicit feature action (which would try `script.turn_on` / `script.turn_off`) and dispatch the script directly.
+
+**3. (Primary trigger — button press.) Button event entity.**
+Add alongside the existing somrig wiring:
+```
+Area Leader: Sleep Timer
+Area Sleep Timer Script: script.labeled_feature_sleep_timeout
+```
+Any state change on the button fires the script. The gate rule (Night enabled AND Media Playing enabled, both read fresh from the sensor) then decides whether to start a fade or cancel-restore. The existing somrig labels (`Area Leader: Night Buttons` + its Script/Arg) continue to handle the per-event light/media actions independently — the two features dispatch in parallel via the leaders automation.
+
+#### Full-override variant (all Args declared)
+
+Useful when you want to pin behavior explicitly — e.g. force a specific media player regardless of the Media Playing leader, use non-default feature names, or change the timeout per-trigger:
+
+```
+# On the script entity (Night follower path):
+Area Follower: Night
+Area Night Script: script.labeled_feature_sleep_timeout
+Area Night Arg media_player: media_player.bedroom_main_audio
+Area Night Arg feature_night: Night
+Area Night Arg feature_media_playing: Media Playing
+Area Night Arg sleep_timeout_minutes: 20
+
+# On the script entity (Media Playing follower path):
+Area Follower: Media Playing
+Area Media Playing Script: script.labeled_feature_sleep_timeout
+Area Media Playing Arg media_player: media_player.bedroom_main_audio
+Area Media Playing Arg feature_night: Night
+Area Media Playing Arg feature_media_playing: Media Playing
+Area Media Playing Arg sleep_timeout_minutes: 20
+
+# On the button entity (Sleep Timer leader path):
+Area Leader: Sleep Timer
+Area Sleep Timer Script: script.labeled_feature_sleep_timeout
+Area Sleep Timer Arg media_player: media_player.bedroom_main_audio
+Area Sleep Timer Arg feature_night: Night
+Area Sleep Timer Arg feature_media_playing: Media Playing
+Area Sleep Timer Arg sleep_timeout_minutes: 20
+```
+
+Args are pooled per dispatched feature, so each path needs its own copy of any Arg you want applied — there is no shared pool across features.
+
+#### Snapshot semantics across restart
+`original_volumes` is persisted in **`sensor.labeled_features_state.snapshots.sleep_timeout`** — the shared snapshot store maintained by the trigger-based template sensor. The script reads it back via `state_attr('sensor.labeled_features_state', 'snapshots')['sleep_timeout']` in Step 0 and writes back via `script.labeled_feature_generics` with `feature: Set Snapshot, snapshot_name: sleep_timeout, payload: <dict>`. Passing `{}` as the payload deletes the entry. The same Set Snapshot path is what every other long-running script uses when it needs state across `mode: restart`.
+
+We deliberately do NOT use the script's own top-level `variables:` block as the persistence surface. HA's template engine doesn't reliably expose `variables:` assignments as state attributes across `mode: restart` — the next run sees the variables block re-initialize to its declared default before Step 0 has a chance to read the previous run's value, so any snapshot stored there gets clobbered. The sensor-attribute round-trip avoids that race because the sensor's render is triggered by the `labeled_feature_snapshot_set` event independently of the script's lifecycle.
+
+The snapshot is cleared at the end of a successful fade *and* at the end of every cancel-restore branch so the next fresh full-run snapshots cleanly.
+
+##### Step 1b classifier reads from the sensor, not `states()`
+The re-trigger prelude classifies "stepping in progress" vs. "discrete event" by reading the button leader's most recent event name. **The classifier reads from `sensor.labeled_features_state.leaders[<leader_entity_id>].current_value`, not from `states(leader_entity_id)`.** For `event`-domain entities (every IKEA button entity in this house), `states()` returns the ISO timestamp of the last event, not the event name. The sensor stores the actual event name in `current_value` via the `attributes.event_type | default(state)` accessor. Reading `states()` would never match the stepping regex on a button leader, causing every Volume Up/Down hold to fall through to the "restore" branch and producing visible volume bouncing at the start of every hold.
+
+There is one subtle window: if a restart fires *between* step 4 (mute) and step 7 (restore) and the gate now says `should_run == true` (e.g. play resumed mid-fade and Night is still on), the script re-uses the snapshot but re-starts from step 1 — so the user gets another 15 minute timer at the muted volume. The next interaction (resume play → mute timeout → unmute or button press) will then run a proper restore. This is the documented trade-off of the in-script cancel model.
 
 #### Adding a new button mapping script
 For a different button family (e.g. IKEA STYRBAR, Hue dimmer, custom MQTT button):
+
 
 1. Create a new script named `script.labeled_feature_<device_family>`.
 2. Accept the same standard fields (`feature`, `scope`, `scope_id`, `follower_entity_id`, `leader_entity_id`, `leader_enabled`, `toggle`, `error_mode`).
