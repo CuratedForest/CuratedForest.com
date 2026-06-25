@@ -15,8 +15,56 @@ html
 body
   background-color: transparent
 
-.main,
 .nav_header,
-.nav_header > nav,
-.content
+.nav_header > nav
   background-color: transparent
+
+// The main wrapper itself stays transparent so the background reads through
+// the gutters; we add the readable surface to the actual content + sidebar.
+.main
+  background-color: transparent
+
+// --- Readable surfaces over the background ----------------------------------
+// The compose theme's sidebar is the <aside class="aside"> element rendered by
+// _partials/sidebar.html; the article body is the <div class="content"> from
+// baseof.html. Both default to background: var(--bg), which is fully opaque.
+// Replace them with a heavily-transparent dark surface so the image still
+// shows through but text contrast is preserved.
+//
+// The translucent surface is mode-aware: dark in light mode (because the
+// background image is dark and we want white-ish text panels would over-
+// brighten the page); slightly more opaque in dark mode where the rest of the
+// chrome is already dark.
+
+.aside
+  background-color: rgba(20, 20, 22, 0.55)
+  backdrop-filter: blur(6px)
+  -webkit-backdrop-filter: blur(6px)
+  border-radius: 0.5rem
+
+.content
+  background-color: rgba(20, 20, 22, 0.55)
+  backdrop-filter: blur(6px)
+  -webkit-backdrop-filter: blur(6px)
+  border-radius: 0.5rem
+  padding: 1.25rem 1.5rem
+
+// Light-mode tweak: the image is dark, so we still want a dark translucent
+// panel — but text color defaults to near-black in light mode and would
+// disappear against the dark panel. Force a light text color whenever the
+// translucent dark surface is in effect.
+html:not(.dark):not([data-mode="dark"])
+  .aside,
+  .content
+    color: #f2f5f7
+    a:not(.button)
+      color: var(--theme)
+
+// Dark mode: the theme's --bg is already a near-black; same translucent panel
+// reads fine, but bump opacity slightly for legibility on busy parts of the
+// image.
+html.dark,
+html[data-mode="dark"]
+  .aside,
+  .content
+    background-color: rgba(20, 20, 22, 0.65)
