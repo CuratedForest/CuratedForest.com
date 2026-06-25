@@ -1,3 +1,9 @@
+---
+title: Label Based Features
+type: docs
+weight: 1
+---
+
 # Theory
 There are TONs of ways to write automations in Home Assistant, and I've tried most of them! Unfortunately the majority of them are brittle or require too much maintenance. After lots of experimenting and a career working with software, these are my suggestions as far as how features in Home Assistant should be written, as well as the functions I currently have written. 
 

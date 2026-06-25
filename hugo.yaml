@@ -8,3 +8,8 @@ module:
     - path: github.com/lkhrs/hugo-dark-visitors
     #- path: github.com/adityatelange/hugo-PaperMod
     - path: github.com/onweru/compose
+menu:
+  main:
+    - name: Infra
+      url: infra/
+      weight: 1

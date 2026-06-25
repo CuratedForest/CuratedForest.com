@@ -7,7 +7,5 @@ These docs consists of a couple of parts.
 1. Label Based Features
 
 
-{{< button "./compose/" "Compose Theme Docs" "mb-1" >}}
-
-{{< button "./clarity/" "Clarity Theme Docs" >}}
+{{< button "./haos/" "Home Assistant Docs" "mb-1" >}}
 
