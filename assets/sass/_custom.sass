@@ -1,0 +1,22 @@
+// Site-wide background image.
+// The compose theme caps <body> at max-width: 1440px (1600px at very wide
+// viewports) and centers it, so a background on <body> would not fill the
+// viewport. Paint the background on <html> instead so it's truly full-bleed
+// behind all content, then make the theme's color tokens transparent so the
+// image actually shows through.
+html
+  background-image: url('/images/background.png')
+  background-size: cover
+  background-position: center center
+  background-attachment: fixed
+  background-repeat: no-repeat
+  background-color: var(--bg)
+
+body
+  background-color: transparent
+
+.main,
+.nav_header,
+.nav_header > nav,
+.content
+  background-color: transparent
