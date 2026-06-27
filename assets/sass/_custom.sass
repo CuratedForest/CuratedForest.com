@@ -96,3 +96,56 @@ html[data-mode="dark"]
 
 .nav_brand img
   margin: 0
+
+// --- Sidebar (doc menu) depth styling -------------------------------------
+// The compose theme's sidebar (layouts/_partials/sidebar.html) renders the
+// docs tree by recursively nesting <section class="section aside_inner">
+// elements, with every level using the same `.section_title` class for its
+// h2. That makes deep trees feel flat. We use the structural nesting to:
+//   * indent each level a little more (padding-left on the inner section),
+//   * shrink the heading font slightly per nesting level,
+//   * provide affordances for the collapsible behavior (see custom.js).
+//
+// The cap at 4 deep nestings is enough for the current tree
+// (Overview > Infra > HAOS > Label Based Features > children) and falls
+// back gracefully if we ever go deeper.
+
+.aside_inner .aside_inner
+  padding-left: 0.75rem
+  .section_title
+    font-size: 1rem
+
+.aside_inner .aside_inner .aside_inner
+  padding-left: 1.5rem
+  .section_title
+    font-size: 0.9rem
+
+.aside_inner .aside_inner .aside_inner .aside_inner
+  padding-left: 2.25rem
+  .section_title
+    font-size: 0.8rem
+
+// --- Sidebar collapse/expand ---------------------------------------------
+// custom.js adds a `collapsible` class to every .aside_inner that has a
+// nested .aside_inner child (i.e. it's a section with sub-sections), then
+// toggles the `collapsed` class on click of its .section_title.
+//
+// We render a small chevron via CSS that flips when collapsed.
+.aside_inner.collapsible > .section_title
+  cursor: pointer
+  position: relative
+  user-select: none
+  &::before
+    content: "▾"
+    display: inline-block
+    font-size: 0.75em
+    width: 1em
+    margin-right: 0.25em
+    transition: transform 0.15s ease-out
+    transform: translateY(-0.1em)
+
+.aside_inner.collapsible.collapsed > .section_title::before
+  transform: rotate(-90deg) translateX(0.1em)
+
+.aside_inner.collapsible.collapsed > section
+  display: none
