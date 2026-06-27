@@ -1,0 +1,20 @@
+{{/*
+  footer.html (site override)
+
+  Forked from the compose theme's layouts/_partials/footer.html. The
+  upstream version is gated by site.Params.enableCopyright and renders a
+  link to the configured site.Params.author when set; without those it
+  just shows "© <year>" with no attribution.
+
+  Here we always render "© <year> Curated Forest" linked to the site
+  root, regardless of param state.
+*/}}
+<footer class="pt-2 pb-2">
+  <div class="wrap">
+    <p>
+      &copy; <span class="year">{{ now.Year }}</span>
+      <a href="{{ absLangURL "" }}">{{ site.Title }}</a>
+    </p>
+    <a href="#pagetop" id="toTop" title={{ T "to_top" }}></a>
+  </div>
+</footer>

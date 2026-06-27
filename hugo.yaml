@@ -10,9 +10,12 @@ module:
     - path: github.com/onweru/compose
 menu:
   main:
-    - name: Infra
-      url: infra/
+    - name: Technology
+      url: tech/
       weight: 1
+    - name: Plants
+      url: plants/
+      weight: 2
 # Required for the compose theme's site search:
 # layouts/index.json renders the Fuse.js search index, but Hugo only emits
 # it when "JSON" is in the home page's output formats. Without this the
@@ -24,21 +27,20 @@ outputs:
     - RSS
     - JSON
 params:
-  # Sections to treat as docs (gets the sidebar / pager rendered around
-  # them by baseof.html). The compose theme defaults to just "docs"
-  # alone; we want the sidebar on every content section here.
+  #   # Sections that should render with the docs layout (sidebar + pager).
+  # The compose theme defaults to just "docs" alone, but our docs live
+  # under tech/, so we replace the default with our actual sections.
   #
-  # The leading empty string "" looks weird but it's intentional: the home
-  # page's .Section is the empty string, so without an empty entry in this
-  # slice the theme's `in $docSections .Section` check fails on home and the
-  # sidebar disappears. (When docSections is the theme's default string
-  # "docs" instead of a slice, `in` does substring matching and "" matches
-  # vacuously - which is the accidental-truthiness this restores.)
+  # The leading empty string "" looks weird but it's intentional: the
+  # home page's .Section is the empty string, so without an empty entry
+  # in this slice the theme's `in $docSections .Section` check fails on
+  # home and the sidebar disappears. (When docSections is the theme's
+  # default string "docs" instead of a slice, `in` does substring
+  # matching and "" matches vacuously - this restores that behavior.)
   docSections:
     - ""
-    - docs
-    - infra
-    - tutorials
+    - tech
+    - plants
   # Enable the theme's built-in Fuse.js site search (renders search box
   # behavior in _partials/search.html + js/search.min.js).
   search:
