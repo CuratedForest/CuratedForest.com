@@ -13,11 +13,26 @@ menu:
     - name: Infra
       url: infra/
       weight: 1
+# Required for the compose theme's site search:
+# layouts/index.json renders the Fuse.js search index, but Hugo only emits
+# it when "JSON" is in the home page's output formats. Without this the
+# /index.json file is missing, the front-end search.min.js fetches it,
+# gets the 404 HTML page back, and throws "Unexpected token '<'".
+outputs:
+  home:
+    - HTML
+    - RSS
+    - JSON
 params:
+  # Enable the theme's built-in Fuse.js site search (renders search box
+  # behavior in _partials/search.html + js/search.min.js).
+  search:
+    on: true
+    global: false  # set true to search across all sections at once
   # Nav logo - rendered by _partials/nav.html via a <picture> element with
   # data-lit / data-dark sources. The strawberry/circuitry icon has a dark
   # rounded-card background that reads well in both light and dark modes,
-  # so the same asset is used for both. The PNG is generated at 64x64 by
+  # so the same asset is used for both. The PNG is generated at 256x256 by
   # scripts/split_icons.py; CSS in assets/sass/_custom.sass constrains the
   # rendered size in the nav.
   #
