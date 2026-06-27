@@ -19,6 +19,10 @@ body
 // .nav_body (search, menu links, mode toggle). We want the readable panel
 // only behind the controls in column 2, not behind the brand or the page
 // gutters - so leave the outer strip transparent and paint just .nav_body.
+// .nav_body is normally stretched to fill the whole 988px grid column;
+// shrink it to fit its content (width: max-content) and pin to the right
+// edge (justify-self: end) so the panel hugs just the search box, menu
+// links, and mode toggle, with its left edge near the search box.
 .nav_header,
 .nav_header > nav
   background-color: transparent
@@ -28,6 +32,9 @@ body
   backdrop-filter: blur(6px)
   -webkit-backdrop-filter: blur(6px)
   border-radius: 0.5rem
+  width: max-content
+  justify-self: end
+  padding: 0 0.5rem
 
 // The main wrapper itself stays transparent so the background reads through
 // the gutters; we add the readable surface to the actual content + sidebar.
@@ -80,13 +87,12 @@ html[data-mode="dark"]
     background-color: rgba(20, 20, 22, 0.65)
 
 // --- Nav logo sizing ---------------------------------------------------------
-// Renders the brand logo at 5rem (~90px @ 18px root). The logo drives the
-// nav row height (~90px tall) since it's taller than the 54px search box;
-// the search/menu/toggle panel (.nav_body) gets vertically centered in the
-// taller row.
+// Renders the brand logo at 6rem (~108px @ 18px root). The logo drives the
+// nav row height (~108px tall) since it's taller than the 54px search box;
+// the .nav_body panel gets vertically centered in the taller row.
 .nav_brand picture,
 .nav_brand img
-  max-width: 5rem
+  max-width: 6rem
 
 .nav_brand img
   margin: 0
