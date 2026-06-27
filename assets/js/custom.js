@@ -3,25 +3,41 @@
 // assets/js/custom.js (the theme prefers this path over the default
 // js/custom.js it ships).
 //
-// Currently provides one feature: collapsible doc-sidebar sections.
+// Two features:
 //
-//   * Any .aside_inner that has a nested .aside_inner child becomes a
-//     click-to-collapse group (chevron rendered via CSS).
-//   * The root entry (depth 0, "The Curated Forest") is excluded so it
-//     never gets a chevron and can't be collapsed away.
-//   * On load, depth >= 2 groups start collapsed; the root and its
-//     immediate children (depth 1, e.g. Technology / Plants) start
-//     expanded so the reader can always see the top of the tree.
-//   * The ancestor chain of the active page is always expanded so deep
-//     pages land with their location in context.
+// 1. Force dark mode at every page load. The site has no mode toggle
+//    (see layouts/_partials/mode.html); enableDarkMode and
+//    defaultLightingMode in hugo.yaml take care of the first paint, and
+//    this IIFE re-pins the data-mode attribute after the theme's
+//    mode.js runs in case anything tries to flip it back.
+//
+// 2. Collapsible doc-sidebar sections:
+//      * Any .aside_inner that has children (nested .aside_inner OR
+//        leaf-page .section_link entries) becomes a click-to-collapse
+//        group (chevron rendered via CSS).
+//      * The root entry (depth 0, "The Curated Forest") is excluded so
+//        it never gets a chevron and can't be collapsed away.
+//      * On load, depth >= 3 groups start collapsed; the root and the
+//        first two child levels start expanded so the reader can always
+//        see at least the "Label Based Features" tier before having to
+//        click anything.
+//      * The ancestor chain of the active page is always expanded so
+//        deep pages land with their location in context.
+(function forceDarkMode() {
+  if (typeof document === 'undefined' || !document.documentElement) return;
+  var doc = document.documentElement;
+  doc.setAttribute('data-mode', 'dark');
+  doc.classList.add('dark');
+})();
+
 (function setupAsideCollapse() {
   if (typeof document === 'undefined') return;
   function ready(fn) {
     if (document.readyState !== 'loading') fn();
     else document.addEventListener('DOMContentLoaded', fn);
   }
-  // Depth here matches the rest of the file's mental model: count of
-  // .aside_inner ancestors above the element (exclusive).
+  // Depth = count of .aside_inner ancestors above the element
+  // (exclusive). The root section in the sidebar is depth 0.
   function depthOf(el) {
     var d = 0;
     var n = el.parentElement;
@@ -40,17 +56,20 @@
       // Skip the root — no chevron, no collapse handler. The root entry
       // is the site itself and stays permanently expanded.
       if (depth === 0) return;
-      // Only sections that have a nested .aside_inner child get the
-      // collapsible affordance; leaf sections (just .section_link h3s)
-      // are not toggled.
-      var hasNested = group.querySelector(':scope > section .aside_inner') ||
-                      group.querySelector(':scope > .aside_inner');
-      if (!hasNested) return;
+      // A group is collapsible if it has any children to hide — either
+      // nested sections (another .aside_inner) OR leaf-page links
+      // (.section_link). Without the .section_link check, "Label Based
+      // Features" wouldn't be collapsible because all its children are
+      // leaf pages, not further sub-sections.
+      var hasChildren =
+        group.querySelector(':scope > section > .aside_inner') ||
+        group.querySelector(':scope > section > .section_link');
+      if (!hasChildren) return;
       group.classList.add('collapsible');
-      // Depth 1 (Technology, Plants) starts expanded so the top of the
-      // tree is always visible; deeper levels start collapsed so the
-      // sidebar doesn't explode on first load.
-      if (depth >= 2) group.classList.add('collapsed');
+      // Depths 1 and 2 start expanded so the reader always sees down
+      // through "Label Based Features" by default; deeper levels start
+      // collapsed so the tree doesn't explode on first load.
+      if (depth >= 3) group.classList.add('collapsed');
       var title = group.querySelector(':scope > .section_title');
       if (!title) return;
       title.addEventListener('click', function (event) {
