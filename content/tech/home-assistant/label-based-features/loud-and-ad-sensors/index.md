@@ -5,14 +5,14 @@ weight: 60
 ---
 
 
-# Loud Sensor 
+## Loud Sensor 
  A typical Leader/Follower 
  Follower On: 75
  Follower Off: 50
 But what if multiple follower! Actually needs to be:
 Loud Follower On: 75
 Load Follower Off: 50
-# Ad detection
+## Ad detection
 Binary sensor Ad Leader
 Media Player Follower
 Follower On: Input without Ad stream

@@ -4,7 +4,6 @@ type: docs
 weight: 50
 ---
 
-# Audio Modes
 The audio script runs any time one of the leaders changes, so it has to check the current state and update any entities that might need changing. 
 
 ## Audio Control

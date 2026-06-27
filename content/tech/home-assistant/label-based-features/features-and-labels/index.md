@@ -4,7 +4,6 @@ type: docs
 weight: 20
 ---
 
-# Features & Labels
 For many features, there are usually 1-3+ labels required. One for the name and to dynamically group the entities into leaders and followers, and then additional labels to pass options and enable specific behaviors. This section aims to contain all the label values used and how to work with them.
 
 ## Use Cases

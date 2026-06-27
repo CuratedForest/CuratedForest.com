@@ -17,10 +17,10 @@
 //        group (chevron rendered via CSS).
 //      * The root entry (depth 0, "The Curated Forest") is excluded so
 //        it never gets a chevron and can't be collapsed away.
-//      * On load, depth >= 3 groups start collapsed; the root and the
-//        first two child levels start expanded so the reader can always
-//        see at least the "Label Based Features" tier before having to
-//        click anything.
+//      * On load, depth >= 4 groups start collapsed; the root and the
+//        first three child levels start expanded so the reader can
+//        always see down through and including the "Label Based
+//        Features" children before having to click anything.
 //      * The ancestor chain of the active page is always expanded so
 //        deep pages land with their location in context.
 (function forceDarkMode() {
@@ -69,7 +69,7 @@
       // Depths 1 and 2 start expanded so the reader always sees down
       // through "Label Based Features" by default; deeper levels start
       // collapsed so the tree doesn't explode on first load.
-      if (depth >= 3) group.classList.add('collapsed');
+      if (depth >= 4) group.classList.add('collapsed');
       var title = group.querySelector(':scope > .section_title');
       if (!title) return;
       title.addEventListener('click', function (event) {

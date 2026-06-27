@@ -4,7 +4,6 @@ type: docs
 weight: 40
 ---
 
-# Area Based Features
 The Leader/Follower and Button stacks are great when you already have entities to wire together — but sometimes the user just needs an entity to *exist* in an area so other things can be wired against it. Area Based Features fill that gap.
 
 Tag an area with `(Area |Floor |)Provides: <FeatureName>` and the system generates the corresponding MQTT discovery entity for you. Built-in features cover common cases (VPD sensor for grow areas, tracked-PSI number, area manifest); user-declared features default to a `select` whose options can come from either entity labels (`(scope-prefix)Provides Option: <FeatureName>`) or static label declarations (`(scope-prefix)Provides Options: <FeatureName>: A|B|C`). Remove the label and the discovery entity is retracted (empty retained payload). The whole pipeline survives HA restarts because the discovery topics are retained and re-published on every `homeassistant.start`.
