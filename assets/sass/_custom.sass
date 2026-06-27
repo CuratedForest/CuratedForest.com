@@ -70,13 +70,13 @@ html[data-mode="dark"]
     background-color: rgba(20, 20, 22, 0.65)
 
 // --- Nav logo sizing ---------------------------------------------------------
-// The compose theme caps the brand image at max-width: 10rem, which at this
-// site's root font-size of 18px renders the logo at 180px - way too large for
-// a nav row. Constrain it to 2.5rem (~45px) and trim the default 1rem vertical
-// margin so the nav row stays compact (~54px tall).
+// Renders the brand logo at 9rem (~162px @ 18px root). This is large enough
+// that the logo - not the search box - drives the nav row height, so the
+// nav header becomes ~162px tall. Intentional: the icon is the page's main
+// visual anchor.
 .nav_brand picture,
 .nav_brand img
-  max-width: 2.5rem
+  max-width: 9rem
 
 .nav_brand img
-  margin: 0.25rem 0
+  margin: 0
