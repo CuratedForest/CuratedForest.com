@@ -27,7 +27,15 @@ params:
   # Sections to treat as docs (gets the sidebar / pager rendered around
   # them by baseof.html). The compose theme defaults to just "docs"
   # alone; we want the sidebar on every content section here.
+  #
+  # The leading empty string "" looks weird but it's intentional: the home
+  # page's .Section is the empty string, so without an empty entry in this
+  # slice the theme's `in $docSections .Section` check fails on home and the
+  # sidebar disappears. (When docSections is the theme's default string
+  # "docs" instead of a slice, `in` does substring matching and "" matches
+  # vacuously - which is the accidental-truthiness this restores.)
   docSections:
+    - ""
     - docs
     - infra
     - tutorials
