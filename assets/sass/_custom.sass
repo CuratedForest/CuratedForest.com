@@ -70,13 +70,14 @@ html[data-mode="dark"]
     background-color: rgba(20, 20, 22, 0.65)
 
 // --- Nav logo sizing ---------------------------------------------------------
-// Renders the brand logo at 9rem (~162px @ 18px root). This is large enough
-// that the logo - not the search box - drives the nav row height, so the
-// nav header becomes ~162px tall. Intentional: the icon is the page's main
+// Renders the brand logo at 8rem (~144px @ 18px root). At 1280px viewport
+// this puts the logo at ~44% of the sidebar width, matching the visual
+// target. The logo drives the nav row height (~144px tall) since it's
+// taller than the search box; intentional - the icon is the page's main
 // visual anchor.
 .nav_brand picture,
 .nav_brand img
-  max-width: 9rem
+  max-width: 8rem
 
 .nav_brand img
   margin: 0
