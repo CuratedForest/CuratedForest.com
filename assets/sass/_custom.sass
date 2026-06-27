@@ -122,6 +122,16 @@ html[data-mode="dark"]
 // problem. Without the .toc a rule, the in-page TOC entries would be
 // noticeably bigger than the page link they belong to.
 
+// Indent leaves (.section_link H3s and TOC anchor lists) relative to
+// their containing section header (.section_title H2). The theme renders
+// them as siblings inside the same .aside_inner, so without this rule a
+// section header sits at the same x as the pages that belong to it. One
+// rule applies at every depth because each .aside_inner already supplies
+// its own depth-based padding-left; this just adds a constant extra step.
+.aside_inner > section > .section_link,
+.aside_inner > section > .toc
+  padding-left: 0.75rem
+
 .aside_inner .aside_inner
   padding-left: 0.75rem
   .section_title
