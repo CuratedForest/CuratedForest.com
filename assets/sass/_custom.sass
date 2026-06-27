@@ -110,18 +110,25 @@ html[data-mode="dark"]
 // (Overview > Infra > HAOS > Label Based Features > children) and falls
 // back gracefully if we ever go deeper.
 
-// Each depth tunes BOTH .section_title (the H2 for a section) and the
-// sibling .section_link (the H3 leaf-page links rendered inside that
-// section). Without the .section_link rule, leaf links would inherit the
-// theme's default font-size (1.25em ≈ 22.5px) and look bigger than their
-// own parent section title — the "font gets big again when I go too deep"
-// problem.
+// Each depth tunes all three text elements that can appear at that
+// level:
+//   * .section_title — the H2 for a section header
+//   * .section_link  — the H3 for a leaf-page link in that section
+//   * .toc a         — the in-page anchor links rendered under each leaf
+//
+// Without the .section_link rule, leaf links would inherit the theme's
+// default font-size (1.25em ≈ 22.5px) and look bigger than their own
+// parent section title — the "font gets big again when I go too deep"
+// problem. Without the .toc a rule, the in-page TOC entries would be
+// noticeably bigger than the page link they belong to.
 
 .aside_inner .aside_inner
   padding-left: 0.75rem
   .section_title
     font-size: 1rem
   > section > .section_link
+    font-size: 0.95rem
+  > section > .toc a
     font-size: 0.95rem
 
 .aside_inner .aside_inner .aside_inner
@@ -130,12 +137,16 @@ html[data-mode="dark"]
     font-size: 0.9rem
   > section > .section_link
     font-size: 0.85rem
+  > section > .toc a
+    font-size: 0.85rem
 
 .aside_inner .aside_inner .aside_inner .aside_inner
   padding-left: 2.25rem
   .section_title
     font-size: 0.8rem
   > section > .section_link
+    font-size: 0.75rem
+  > section > .toc a
     font-size: 0.75rem
 
 // --- Sidebar collapse/expand ---------------------------------------------

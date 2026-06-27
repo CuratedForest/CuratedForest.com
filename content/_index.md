@@ -12,7 +12,7 @@ data:
   - Author
   fileLink: content/projects.csv
   title: Projects
-title: Overview
+title: The Curated Forest
 ---
 
 # Welcome 
