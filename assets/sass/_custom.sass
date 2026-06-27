@@ -183,3 +183,15 @@ html[data-mode="dark"]
 
 .aside_inner.collapsible.collapsed > section
   display: none
+
+
+// --- Hide the mode-toggle nav slot ---------------------------------------
+// _partials/mode.html (site override) renders nothing, but the wrapping
+// <li class="nav-item"> in the theme's nav.html still gets emitted. Hide
+// that empty list item so it doesn't take horizontal space in the nav
+// body's flex layout. We target it by structural position (the last
+// .nav-item child of .nav_body) because the empty item has no
+// distinguishing class of its own.
+.nav_body > .nav-item:last-child:empty,
+.nav_body > .nav-item:has(> .color_mode:empty)
+  display: none

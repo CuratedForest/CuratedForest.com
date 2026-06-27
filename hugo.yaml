@@ -19,7 +19,17 @@ outputs:
     - RSS
     - JSON
 params:
-  #   # Sections that should render with the docs layout (sidebar + pager).
+  # The site is dark-themed only. enableDarkMode flips the <html class>
+  # to "dark" at render time; defaultLightingMode pins the data-mode
+  # attribute so the theme's mode.js doesn't fall back to system pref or
+  # a stale localStorage value. The mode-toggle checkbox is removed from
+  # the nav via the layouts/_partials/mode.html override and a CSS rule
+  # in _custom.sass; assets/js/custom.js also clears any stored mode key
+  # from previous visits so returning users don't get stuck in light
+  # mode.
+  enableDarkMode: true
+  defaultLightingMode: dark
+  # Sections that should render with the docs layout (sidebar + pager).
   # The compose theme defaults to just "docs" alone, but our docs live
   # under tech/, so we replace the default with our actual sections.
   #
@@ -36,8 +46,14 @@ params:
   # Enable the theme's built-in Fuse.js site search (renders search box
   # behavior in _partials/search.html + js/search.min.js).
   search:
-    on: true
-    global: false  # set true to search across all sections at once
+    # Quote the key: YAML 1.1 maps the bareword `on` to the boolean
+    # `true`, so the unquoted form parses as { true: true } and the
+    # compose theme's lookup `site.Params.search.on` resolves to nil. The
+    # theme treats nil as not-disabled so search still works, but quoting
+    # the key makes the config's intent explicit and matches what the
+    # theme actually reads.
+    "on": true
+    global: true   # search across all sections (set false to scope to the current section)
   # Nav logo - rendered by _partials/nav.html via a <picture> element with
   # data-lit / data-dark sources. The strawberry/circuitry icon has a dark
   # rounded-card background that reads well in both light and dark modes,
