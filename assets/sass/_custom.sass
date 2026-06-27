@@ -15,9 +15,18 @@ html
 body
   background-color: transparent
 
+// Outer nav header strip stays transparent so the background image shows
+// through the page gutters; the readable surface gets painted on the inner
+// .nav wrap below (matches the sidebar / content panel treatment).
 .nav_header,
 .nav_header > nav
   background-color: transparent
+
+.nav_header > .nav
+  background-color: rgba(20, 20, 22, 0.55)
+  backdrop-filter: blur(6px)
+  -webkit-backdrop-filter: blur(6px)
+  border-radius: 0.5rem
 
 // The main wrapper itself stays transparent so the background reads through
 // the gutters; we add the readable surface to the actual content + sidebar.
@@ -70,14 +79,12 @@ html[data-mode="dark"]
     background-color: rgba(20, 20, 22, 0.65)
 
 // --- Nav logo sizing ---------------------------------------------------------
-// Renders the brand logo at 8rem (~144px @ 18px root). At 1280px viewport
-// this puts the logo at ~44% of the sidebar width, matching the visual
-// target. The logo drives the nav row height (~144px tall) since it's
-// taller than the search box; intentional - the icon is the page's main
-// visual anchor.
+// Renders the brand logo at 7rem (~126px @ 18px root). The logo drives the
+// nav row height (~126px tall) since it's taller than the search box;
+// intentional - the icon is the page's main visual anchor.
 .nav_brand picture,
 .nav_brand img
-  max-width: 8rem
+  max-width: 7rem
 
 .nav_brand img
   margin: 0
