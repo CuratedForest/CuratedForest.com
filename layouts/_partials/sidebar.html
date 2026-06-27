@@ -1,0 +1,45 @@
+{{/*
+  sidebar.html (site override)
+
+  Forked from the compose theme's layouts/_partials/sidebar.html. The
+  only behavioral change is the root of the tree: the theme renders the
+  sidebar starting at .FirstSection (the top-level section of the current
+  page), so the tree shifts up a level as you navigate into a subsection
+  and the depth-based CSS in _custom.sass renders the same logical entry
+  at different sizes on different pages.
+
+  Here we always root the tree at site.Home so every page sees the
+  identical tree (same depths, same sizes, same indentation, same
+  collapsed-state heuristics in custom.js).
+*/}}
+<aside class="aside menu">
+  <div>
+    <label class="aside_toggle toggle" title='{{ T "docs_menu" }}' role="button">{{ T "docs_menu" }} {{ partial "sprite" (dict "icon" "carly") }}</label>
+  </div>
+  {{- template "tree" (dict "page" . "section" site.Home)  }}
+  {{- define "tree" }}
+  {{- $section := .section }}
+  {{- $page := .page }}
+  {{- $permalink := $page.RelPermalink }}
+  <section class="section aside_inner">
+    <h2 class="section_title{{ if eq $section.RelPermalink $permalink }} active{{ end }}"><a  href="{{ $section.Permalink }}" class="group">{{ $section.Title }}</a></h2>
+      {{- $pages := $section.Pages }}
+      {{- with $pages }}
+      <section class="" id="docs-{{ anchorize $section.Title }}">
+        {{- range . }}
+        {{- if .IsPage }}
+        <h3 class="section_link{{ if eq .RelPermalink $permalink }} active{{ end }}"><a id="docs-{{ anchorize .Title }}" href="{{ .Permalink }}">{{ .Title }}</a></h3>
+        {{- $toc_id := printf "toc-%s" (replace (urlize .Title) "." "-") -}}
+        {{- $toc := string .TableOfContents }}
+        {{- if ne $toc "" }}
+          {{- safeHTML (replace $toc "TableOfContents" $toc_id) }}
+        {{- end }}
+        {{- else }}
+        {{- template "tree" (dict "page" $page "section" .) }}
+        {{- end }}
+        {{- end }}
+      </section>
+      {{- end }}
+  </section>
+  {{- end }}
+</aside>
