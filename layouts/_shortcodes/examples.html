@@ -1,0 +1,34 @@
+{{/*
+  examples.html — render the local examples.md page resource inline.
+
+  Used inside a child page of a section that needs to show its
+  "example labels" snippets in-place. The same examples.md resource is
+  also consumed by the all-examples shortcode for the section's
+  roll-up page.
+
+  Usage (inside a page bundle that has an examples.md resource):
+    {{< examples >}}
+
+  Optional title (rendered as an <h2> before the snippets); pass
+  title="" or omit to skip the heading:
+    {{< examples title="Example labels" >}}
+
+  Behavior:
+    * Looks up the examples.md resource on the current page bundle.
+    * If found, renders it through .RenderString so Hugo markdown,
+      shortcodes, and render hooks apply.
+    * If missing, emits an HTML comment instead of erroring so authors
+      can drop the shortcode into a draft page without breaking the
+      build.
+*/}}
+{{- $title := .Get "title" -}}
+{{- $res := .Page.Resources.GetMatch "examples.md" -}}
+{{- with $res -}}
+  {{- $rendered := $.Page.RenderString .Content -}}
+  <section class="examples">
+    {{- with $title }}<h2>{{ . }}</h2>{{ end }}
+    {{ $rendered }}
+  </section>
+{{- else -}}
+  <!-- examples shortcode: no examples.md resource on this page bundle -->
+{{- end -}}

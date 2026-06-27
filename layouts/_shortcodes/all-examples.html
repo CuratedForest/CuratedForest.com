@@ -1,0 +1,35 @@
+{{/*
+  all-examples.html — roll up every sibling page's examples.md into one
+  page. Used on the section's "example-labels" roll-up so readers can
+  copy-paste every label snippet from one place.
+
+  Usage (on a page that lives inside the same section as the bundles
+  with examples.md resources):
+    {{< all-examples >}}
+
+  Behavior:
+    * Walks the parent section's regular pages.
+    * Skips the current page (so a roll-up never includes itself).
+    * For each sibling that has an examples.md resource:
+        - emits an <h2> linking back to the source page
+        - renders the resource content through the host page's
+          RenderString so all shortcodes / render hooks still work.
+    * Siblings without an examples.md resource are silently skipped.
+    * Order follows the section's default page ordering (weight, then
+      date, then title — same as the sidebar).
+*/}}
+{{- $here := .Page -}}
+{{- $section := $here.Parent -}}
+{{- with $section -}}
+  {{- range .Pages -}}
+    {{- if ne .RelPermalink $here.RelPermalink -}}
+      {{- $res := .Resources.GetMatch "examples.md" -}}
+      {{- with $res -}}
+        <section class="examples examples--rolled">
+          <h2><a href="{{ .Page.RelPermalink }}">{{ .Page.Title }}</a></h2>
+          {{ $here.RenderString .Content }}
+        </section>
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
