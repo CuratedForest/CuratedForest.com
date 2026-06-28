@@ -5,16 +5,6 @@ type: docs
 draft: true
 ---
 
-Version:0.9 StartHTML:0000000105 EndHTML:0000010005 StartFragment:0000000137 EndFragment:0000009973
-
-**From:** Kathleen DeBrota <kathleen.debrota@aerofarms.com>  
-**Sent:** Thursday, August 24, 2023 4:51 PM  
-**To:** Alex Rudnicki <alex.rudnicki@aerofarms.com>; Einar Magnusson <einar.magnusson@aerofarms.com>; Thomas Magill <thomas.magill@aerofarms.com>  
-**Subject:** Re: Conceptual data flows/ideas for variables to capture
-
-Here's a slightly better organized version of the same list.
-
-  
 
 **Calculated variables:** 
 
