@@ -1,3 +1,9 @@
+---
+title: Kopia Backups
+weight: 8
+type: docs
+---
+
 Flatpak doesn't work for getting files owned by root. Go for native packaging. 
 
 Have to run after updates

@@ -13,3 +13,7 @@ replace typical SaaS offerings.
 {{< button "./esphome/" "ESPHome" "mb-1" >}}
 {{< button "./timescaledb/" "TimescaleDB" "mb-1" >}}
 {{< button "./grafana/" "Grafana" "mb-1" >}}
+{{< button "./kubernetes/" "Kubernetes" "mb-1" >}}
+{{< button "./immich/" "Immich" "mb-1" >}}
+{{< button "./kopia-backups/" "Kopia Backups" "mb-1" >}}
+{{< button "./seaweed-fs/" "SeaweedFS" "mb-1" >}}

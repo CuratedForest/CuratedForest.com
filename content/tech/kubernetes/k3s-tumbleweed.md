@@ -1,10 +1,10 @@
 ---
-timestamp: 2025-08-09T07:12:57+03:00
-modified: 2025-08-09T07:12:57+03:00
-draft: "true"
-title: Untitled
-creation_date: 2025-08-09T07:12:57+03:00
+title: k3s on openSUSE Tumbleweed
+weight: 10
+type: docs
+draft: true
 ---
+
 First, run the following
 
 ```
@@ -114,7 +114,7 @@ kubectl create secret generic bitwarden-cli
 k9s -c secrets
 ```
 Then find the bitwarden-cli secret and press `e` to edit it. From here, add stringData at the root indentation:
-![](Pasted%20image%2020250809073654.png)
+![ArgoCD secret stringData example](argocd-bitwarden-secret.png)
 Save this and it'll automatically get converted to `data:` which is base64 encoded.
 If you're copying from another cluster, you can copy the data: section straight in.
 

@@ -1,11 +1,9 @@
 ---
-timestamp: 2025-08-09T16:45:28+03:00
-modified: 2025-08-09T16:45:28+03:00
-draft: "true"
-title: Untitled 1
-creation_date: 2025-08-09T16:45:28+03:00
+title: SeaweedFS
+weight: 9
+type: docs
+draft: true
 ---
-
 
 Can copy and paste this into host to fix corrupted idx files.
 ```

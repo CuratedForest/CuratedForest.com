@@ -19,9 +19,10 @@
         sibling <div id="lbX" class="lightbox"> sits at the end of the
         gallery. The :target pseudo-class flips the matching overlay
         from display:none to display:flex.
-      * Backdrop, close button, and a transparent overlay link all
-        point at "#_" (a no-op fragment that doesn't match any
-        element) to close. Browser back still works.
+      * Backdrop and close button both point at "#_" (a no-op
+        fragment that doesn't match any element) to close. Clicking
+        outside the image hits the backdrop and closes; browser back
+        also works.
       * Prev / next buttons inside the lightbox jump straight to the
         neighbour's id, threading through the gallery without ever
         unmounting the overlay.

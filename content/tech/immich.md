@@ -1,3 +1,10 @@
+---
+title: Immich
+weight: 7
+type: docs
+draft: true
+---
+
 restore from backup
 ```
 
