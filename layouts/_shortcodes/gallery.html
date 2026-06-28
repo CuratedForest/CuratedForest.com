@@ -1,32 +1,38 @@
 {{/*
-  gallery.html — minimal responsive thumbnail grid for a page bundle.
+  gallery.html — responsive thumbnail grid with a CSS-only lightbox.
 
   Usage (inside a page bundle that ships image resources):
-      {{< gallery >}}                       # all .jpg/.jpeg/.png/.gif/.webp page resources
-      {{< gallery match="*.jpg" sort="asc" >}}
+      {{< gallery >}}                       # every image page resource
+      {{< gallery match="*.jpg" sort="asc" thumb="400" full="1600" >}}
 
   Parameters (all optional):
       match : glob applied via .Resources.Match.
-              Defaults to a sentinel that means "every image resource".
+              Defaults to every image resource on the page.
       sort  : "asc" (default) | "desc" — sort by resource Name.
-      thumb : thumbnail width in CSS pixels (default 320). Hugo resizes
-              source images at build time and serves the resized variant.
-              The full-size original is what each thumb links to.
+      thumb : thumbnail width in CSS pixels (default 320).
+      full  : lightbox image width in pixels (default 1600). Capped at
+              the original width by Hugo so portrait shots don't blow
+              up beyond their native resolution.
 
-  Behavior:
-      * Uses page-resource Image processing (.Resize) so thumbnails are
-        a fixed pixel width, served as fingerprinted derivatives the
-        first render produces and Hugo caches in resources/_gen.
-      * Each thumbnail links to the original full-resolution image,
-        opening in a new tab (target="_blank").
-      * Renders nothing if the page has no matching resources — safe to
-        drop on a draft page.
-      * Lazy-loads thumbnails so a page with dozens of images doesn't
-        block first paint.
+  Lightbox mechanics:
+      * No JavaScript. Each thumbnail is an <a href="#lbX"> and a
+        sibling <div id="lbX" class="lightbox"> sits at the end of the
+        gallery. The :target pseudo-class flips the matching overlay
+        from display:none to display:flex.
+      * Backdrop, close button, and a transparent overlay link all
+        point at "#_" (a no-op fragment that doesn't match any
+        element) to close. Browser back still works.
+      * Prev / next buttons inside the lightbox jump straight to the
+        neighbour's id, threading through the gallery without ever
+        unmounting the overlay.
+      * The lightbox image is a Hugo-resized derivative (default
+        1600px wide) — lazy-loaded so 20+ images don't preload at
+        gallery render time.
 */}}
 {{- $match := .Get "match" -}}
 {{- $sort  := .Get "sort"  | default "asc" -}}
-{{- $thumb := (.Get "thumb" | default "320") | int -}}
+{{- $thumb := (.Get "thumb" | default "320")  | int -}}
+{{- $full  := (.Get "full"  | default "1600") | int -}}
 {{- $resources := slice -}}
 {{- if $match -}}
   {{- $resources = .Page.Resources.Match $match -}}
@@ -38,13 +44,37 @@
 {{- else -}}
   {{- $resources = sort $resources "Name" "asc" -}}
 {{- end -}}
+{{- $count := len $resources -}}
+{{- $galleryID := printf "g%s" (anchorize .Page.RelPermalink) -}}
 {{- if $resources -}}
 <div class="gallery">
-  {{- range $resources -}}
-    {{- $thumbResource := .Resize (printf "%dx" $thumb) -}}
-    <a class="gallery__item" href="{{ .RelPermalink }}" target="_blank" rel="noopener">
-      <img loading="lazy" src="{{ $thumbResource.RelPermalink }}" width="{{ $thumbResource.Width }}" height="{{ $thumbResource.Height }}" alt="{{ .Name }}">
+  {{- range $i, $r := $resources -}}
+    {{- $thumbR := $r.Resize (printf "%dx" $thumb) -}}
+    {{- $id := printf "%s-%d" $galleryID $i -}}
+    <a class="gallery__item" href="#{{ $id }}" aria-label="View {{ $r.Name }}">
+      <img loading="lazy" src="{{ $thumbR.RelPermalink }}" width="{{ $thumbR.Width }}" height="{{ $thumbR.Height }}" alt="{{ $r.Name }}">
     </a>
   {{- end -}}
 </div>
+{{- range $i, $r := $resources -}}
+  {{- $fullR := $r.Resize (printf "%dx" $full) -}}
+  {{- $id := printf "%s-%d" $galleryID $i -}}
+  {{- $prevIdx := sub $i 1 -}}
+  {{- if lt $prevIdx 0 }}{{ $prevIdx = sub $count 1 }}{{ end -}}
+  {{- $nextIdx := add $i 1 -}}
+  {{- if ge $nextIdx $count }}{{ $nextIdx = 0 }}{{ end -}}
+  {{- $prevID := printf "%s-%d" $galleryID $prevIdx -}}
+  {{- $nextID := printf "%s-%d" $galleryID $nextIdx -}}
+  <div id="{{ $id }}" class="lightbox" role="dialog" aria-modal="true" aria-label="{{ $r.Name }}">
+    <a class="lightbox__backdrop" href="#_" aria-label="Close"></a>
+    <figure class="lightbox__figure">
+      <img src="{{ $fullR.RelPermalink }}" width="{{ $fullR.Width }}" height="{{ $fullR.Height }}" alt="{{ $r.Name }}" loading="lazy">
+    </figure>
+    {{- if gt $count 1 -}}
+      <a class="lightbox__nav lightbox__nav--prev" href="#{{ $prevID }}" aria-label="Previous image">‹</a>
+      <a class="lightbox__nav lightbox__nav--next" href="#{{ $nextID }}" aria-label="Next image">›</a>
+    {{- end -}}
+    <a class="lightbox__close" href="#_" aria-label="Close">×</a>
+  </div>
+{{- end -}}
 {{- end -}}

@@ -200,9 +200,10 @@ html[data-mode="dark"]
 
 // --- Image gallery (layouts/_shortcodes/gallery.html) -------------------
 // Responsive CSS grid that fills the available column width with thumb-
-// nail tiles. Each tile shows a Hugo-resized derivative and links to the
-// original on click. The minimum tile width (180px) keeps tiles readable
-// on a phone; wider viewports get more columns automatically.
+// nail tiles. Each tile is an <a href="#lightbox-id"> that opens a
+// CSS-only lightbox sibling (see .lightbox below). The minimum tile
+// width (180px) keeps tiles readable on a phone; wider viewports get
+// more columns automatically.
 .gallery
   display: grid
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr))
@@ -223,3 +224,79 @@ html[data-mode="dark"]
     height: 100%
     object-fit: cover
     aspect-ratio: 1 / 1
+
+
+// --- Lightbox overlay ----------------------------------------------------
+// CSS-only modal viewer for gallery thumbnails. Each .lightbox sits idle
+// at display:none until its #id matches the URL fragment (:target). The
+// shortcode emits one .lightbox per image with prev/next/close anchors
+// that change the fragment to neighbour ids or to "#_" (no-op) to close.
+.lightbox
+  display: none
+  position: fixed
+  inset: 0
+  z-index: 100
+  align-items: center
+  justify-content: center
+  padding: 1.5rem
+
+.lightbox:target
+  display: flex
+
+.lightbox__backdrop
+  position: absolute
+  inset: 0
+  background-color: rgba(0, 0, 0, 0.85)
+  backdrop-filter: blur(8px)
+  -webkit-backdrop-filter: blur(8px)
+
+.lightbox__figure
+  position: relative
+  max-width: 100%
+  max-height: 100%
+  margin: 0
+  img
+    display: block
+    max-width: 100%
+    max-height: calc(100vh - 3rem)
+    object-fit: contain
+    border-radius: 0.25rem
+
+.lightbox__close,
+.lightbox__nav
+  position: absolute
+  z-index: 1
+  color: rgba(255, 255, 255, 0.85)
+  background-color: rgba(0, 0, 0, 0.45)
+  border-radius: 50%
+  display: flex
+  align-items: center
+  justify-content: center
+  text-decoration: none
+  user-select: none
+  transition: background-color 0.15s ease-out, color 0.15s ease-out
+  &:hover
+    background-color: rgba(0, 0, 0, 0.7)
+    color: white
+
+.lightbox__close
+  top: 1rem
+  right: 1rem
+  width: 2.25rem
+  height: 2.25rem
+  font-size: 1.5rem
+  line-height: 1
+
+.lightbox__nav
+  top: 50%
+  width: 3rem
+  height: 3rem
+  font-size: 2.25rem
+  line-height: 1
+  transform: translateY(-50%)
+
+.lightbox__nav--prev
+  left: 1rem
+
+.lightbox__nav--next
+  right: 1rem
