@@ -2,7 +2,7 @@
 title: k3s on openSUSE Tumbleweed
 weight: 10
 type: docs
-draft: true
+draft: false
 ---
 
 First, run the following
