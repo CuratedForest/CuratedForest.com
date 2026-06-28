@@ -2,9 +2,10 @@
 title: Past Designs
 weight: 5
 type: docs
-draft: true
 ---
 
-I've been building grow systems since Nov 2016 and this page is to share what those designs looked like. 
+I've been building grow systems since November 2016. This page shows
+what those earlier designs looked like — the iterations that led to the
+current setup.
 
-{{< gallery globalMatch="images/past-designs/*" sortOrder="desc" rowHeight="200" margins="5" thumbnailResizeOptions="600x600 q90 Lanczos" previewType="blur" embedPreview=true loadJQuery=true >}}
+{{< gallery sort="asc" >}}

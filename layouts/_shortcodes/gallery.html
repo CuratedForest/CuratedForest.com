@@ -1,0 +1,50 @@
+{{/*
+  gallery.html — minimal responsive thumbnail grid for a page bundle.
+
+  Usage (inside a page bundle that ships image resources):
+      {{< gallery >}}                       # all .jpg/.jpeg/.png/.gif/.webp page resources
+      {{< gallery match="*.jpg" sort="asc" >}}
+
+  Parameters (all optional):
+      match : glob applied via .Resources.Match.
+              Defaults to a sentinel that means "every image resource".
+      sort  : "asc" (default) | "desc" — sort by resource Name.
+      thumb : thumbnail width in CSS pixels (default 320). Hugo resizes
+              source images at build time and serves the resized variant.
+              The full-size original is what each thumb links to.
+
+  Behavior:
+      * Uses page-resource Image processing (.Resize) so thumbnails are
+        a fixed pixel width, served as fingerprinted derivatives the
+        first render produces and Hugo caches in resources/_gen.
+      * Each thumbnail links to the original full-resolution image,
+        opening in a new tab (target="_blank").
+      * Renders nothing if the page has no matching resources — safe to
+        drop on a draft page.
+      * Lazy-loads thumbnails so a page with dozens of images doesn't
+        block first paint.
+*/}}
+{{- $match := .Get "match" -}}
+{{- $sort  := .Get "sort"  | default "asc" -}}
+{{- $thumb := (.Get "thumb" | default "320") | int -}}
+{{- $resources := slice -}}
+{{- if $match -}}
+  {{- $resources = .Page.Resources.Match $match -}}
+{{- else -}}
+  {{- $resources = .Page.Resources.ByType "image" -}}
+{{- end -}}
+{{- if eq $sort "desc" -}}
+  {{- $resources = sort $resources "Name" "desc" -}}
+{{- else -}}
+  {{- $resources = sort $resources "Name" "asc" -}}
+{{- end -}}
+{{- if $resources -}}
+<div class="gallery">
+  {{- range $resources -}}
+    {{- $thumbResource := .Resize (printf "%dx" $thumb) -}}
+    <a class="gallery__item" href="{{ .RelPermalink }}" target="_blank" rel="noopener">
+      <img loading="lazy" src="{{ $thumbResource.RelPermalink }}" width="{{ $thumbResource.Width }}" height="{{ $thumbResource.Height }}" alt="{{ .Name }}">
+    </a>
+  {{- end -}}
+</div>
+{{- end -}}

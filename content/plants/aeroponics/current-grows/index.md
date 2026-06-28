@@ -2,9 +2,11 @@
 title: Current Grow Systems
 weight: 6
 type: docs
-draft: true
 ---
 
-These are some pictures of my current growing system. As you can see, it's currently small scale, but the issues have been worked out well enough that I'm comfortable utilizing the design in my living room! Next step is scaling! 
+What the current aeroponic systems at Curated Forest look like in
+practice. Small scale today, but with the failure modes (clogged
+nozzles, power-loss handling) worked out well enough that I've been
+running the design in the living room. Next step is scaling.
 
-{{< gallery globalMatch="images/current-grows/*" sortOrder="desc" rowHeight="200" margins="5" thumbnailResizeOptions="600x600 q90 Lanczos" previewType="blur" embedPreview=true loadJQuery=true >}}
+{{< gallery sort="desc" >}}
