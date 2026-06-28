@@ -1,6 +1,8 @@
 ---
-title: "Past Designs"
-weight: 3
+title: Past Designs
+weight: 5
+type: docs
+draft: true
 ---
 
 I've been building grow systems since Nov 2016 and this page is to share what those designs looked like. 

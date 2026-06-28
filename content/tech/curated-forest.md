@@ -1,6 +1,7 @@
 ---
-title: "The Curated Forest"
-weight: 1
+title: The Curated Forest
+weight: 2
+type: docs
 ---
 
 The Curated Forest is basically a collection of open technologies that have been evaluated and deemed functional enough to replace a more typical SaaS offering. Think of the antithesis of Apple's "Walled Garden".
