@@ -2,32 +2,26 @@
 title: The Curated Forest
 ---
 
-# Welcome
-The Sumerians invented the technology of writing to keep track of their
-farms. Now I'm writing about the use of open source projects to build
-the next generation of farming technology.
-
-This site is closer to a barren field currently, but the seeds have
-been planted and the strawberries are running. The documentation
-pipeline has been set up and I'm excited to share what I've been
-working on.
-
-Until then, if you're interested in contacting me, feel free to reach
-out at enlil@sumeriansalad.com.
-
-## What is The Curated Forest?
+# Welcome! 
 The Curated Forest is a collection of open technologies that have been
-evaluated and deemed functional enough to replace a more typical SaaS
-offering. Think of it as the antithesis of Apple's "Walled Garden".
+evaluated, implemented, and documented with the goals to run all of the
+automation in my house, support all of technical needs of a business,
+and ultimately collaborate and automate the growth of food.
 
-It's not necessarily exclusive to farming and will eventually get its
-own site too.
+## The "Walled Garden" vs the Curated Forest
+Apple has a reputation for having a first class technology experience, you just have to stay in their ecosystem of hardware and technology. For many this is in their budget and don't mind the limitations of Apple products. 
 
-The current main components are:
+For me, I use Apple to set the bar for what the experience _should_ be, and am building that experience with open source tools and software so that we all can share in the magic today's technology can provide. This demand for shareability fundamentally drives open source as a hard requirement for this project and aligns with my personal values.
 
-- [Home Assistant](tech/home-assistant/)
-- [ESPHome](tech/esphome/) & the ESP chips that go along with it
-- PostgreSQL & [TimescaleDB](tech/timescaledb/)
-- [Grafana](tech/grafana/)
-- [Kubernetes](tech/kubernetes/) (k3s)
-- Linux
+One of the major challenges to using open source software is the overwhelm of possibilities. Not only are there ALWAYS multiple options for a single service, but also a tremendous amount of information on the web about how to run anything and everything... Which is complicated further by the fact that most of those resources are written by novices! 
+
+This is where my decades of experience playing with anything with bits and bytes comes in. The Curated Forest will start as my shamelessly opinionated resource for running software, hardware, and configuration best practices. Eventually I hope it'll support a community working on the technical foundation for a truly first class open source experience. A big part of this collaboration is understanding from the start that my choices might not align with your needs and the architecture has to be flexible enough to gracefully take a different approach.
+
+This is what makes the Curated Forest the antithesis to the Walled Garden - A sane default path is laid out here, and you're encouraged to lay some bricks of your own.
+
+### A Note For Beginners
+I've tried to take the most functional and flexible approaches to running software today. Unfortunately that comes with a ton of associated complexity! My hope is that I've taken the brunt of learning that complexity, and can translate it down to only what is absolutely necessary.
+
+
+## So What About Food?
+While I could wax poetically about software all day, I believe what actually brings value are contributions that impact the real world and with food being one of our 3 fundamental needs, it's the path I've decided to take in life. 
