@@ -1,6 +1,6 @@
 ---
 title: Current Grow Systems
-weight: 6
+weight: 1
 type: docs
 ---
 

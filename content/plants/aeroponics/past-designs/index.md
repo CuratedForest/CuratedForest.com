@@ -1,6 +1,6 @@
 ---
 title: Past Designs
-weight: 5
+weight: 2
 type: docs
 ---
 

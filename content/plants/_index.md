@@ -1,6 +1,6 @@
 ---
 title: Plants
-weight: 2
+weight: 1
 ---
 
 Documentation of what gets grown at Curated Forest — the plants

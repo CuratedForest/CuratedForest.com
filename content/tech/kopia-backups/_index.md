@@ -1,6 +1,6 @@
 ---
 title: Kopia Backups
-weight: 8
+weight: 4
 type: docs
 ---
 

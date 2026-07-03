@@ -1,6 +1,6 @@
 ---
 title: DevOps Approach
-weight: 2
+weight: 3
 type: docs
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Data Collection
-weight: 3
+weight: 5
 type: docs
 ---
 

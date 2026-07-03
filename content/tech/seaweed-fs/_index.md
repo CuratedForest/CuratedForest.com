@@ -1,6 +1,6 @@
 ---
 title: SeaweedFS
-weight: 9
+weight: 8
 type: docs
 draft: true
 ---
