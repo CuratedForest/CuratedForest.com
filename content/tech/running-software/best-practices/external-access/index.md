@@ -3,6 +3,8 @@ title: External Access
 weight: 3
 type: docs
 draft: false
+aliases:
+  - /tech/running-software/external-access/
 ---
 
 How services are reached from outside the local network — and, just as
