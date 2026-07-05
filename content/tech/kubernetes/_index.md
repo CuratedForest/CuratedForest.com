@@ -2,6 +2,8 @@
 title: Kubernetes
 type: docs
 weight: 6
+aliases:
+  - /tech/kubernetes/
 ---
 
 Notes on the k3s cluster underneath Curated Forest. Apps and the
