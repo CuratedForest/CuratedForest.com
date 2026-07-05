@@ -1,0 +1,25 @@
+{{/*
+search/single.html (site override)
+
+Forked from the compose theme's layouts/search/single.html. Upstream
+renders the search-results page as a bare <main> with no docs sidebar
+    (baseof.html special-cases `.Type "search"` and skips the whole
+    .main/.grid-auto/document layout).
+
+    We instead wrap the results container in the same structure that
+    _partials/document.html gives content pages — .main wrapper, .grid-auto
+    with the sidebar partial on the left and the results in a .content
+    main column — so /search gets the identical left docs menu as every
+    other page. The `#searchpage` id is what assets/js (theme search
+    bundle) targets to inject results, so it must be preserved.
+    */}}
+    {{- define "main" }}
+    <div class="main wrap pt-4">
+        <div class="grid-auto">
+            {{- partial "sidebar" . }}
+            <main class="content" id="results">
+                <div class="results" id="searchpage"></div>
+            </main>
+        </div>
+    </div>
+    {{- end }}
