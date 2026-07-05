@@ -1,0 +1,68 @@
+// --- Mobile nav cleanup ------------------------------------------------------
+// Problem: on mobile the compose theme shows TWO hamburger-style controls:
+//   1. .nav_toggle (top-right, "harmburger" sprite) — opens the slide-out
+//      .nav_body panel whose first item is the search field. Confusing,
+//      because it *looks* like a menu but is really how you reach search.
+//   2. .aside_toggle ("Docs Menu" bar with the "carly" icon on the right) —
+//      expands the docs sidebar tree.
+//
+// Fix, mobile only (<992px, the theme's own nav breakpoint):
+//   * Hide the .nav_toggle hamburger entirely and instead render the
+//     .nav_body inline in the header — there is enough room next to the
+//     logo for the search bar. The site menu links (Technology / Plants /
+//     AI Usage) flow underneath the search field inside the same panel.
+//   * Left-align the "Docs Menu" toggle's icon by putting it before the
+//     label text (flex-direction row-reverse + justify-content flex-end),
+//     so the docs-menu affordance reads from the left edge instead of
+//     mirroring the old top-right hamburger.
+//
+// Desktop (≥992px) is untouched: the theme already lays the nav out
+// horizontally and hides both toggles there.
+
+@media screen and (max-width: 991px)
+  // 1) Kill the top-right hamburger.
+  .nav_toggle
+    display: none
+
+  // 2) Render the nav body (search + menu links) inline in the header
+  //    instead of as an off-canvas drawer.
+  .nav
+    grid-template-columns: auto 1fr
+    grid-gap: 0.5rem
+
+  .nav_body
+    // Undo the off-canvas drawer positioning from the theme's _nav.sass.
+    position: static
+    height: auto
+    transform: none
+    transition: none
+    // Lay out: search bar on top, menu links in a row beneath it.
+    display: flex
+    flex-direction: column
+    align-items: stretch
+    justify-self: stretch
+    width: auto
+    padding: 0.25rem 0.5rem
+
+  // Search field fills the available header width.
+  .nav_body .search
+    justify-content: stretch
+    .search_field
+      width: 100%
+
+  // Menu links (Technology, Plants, ...) sit in a compact row under the
+  // search bar.
+  .nav_body > .nav-item:not(:first-child)
+    display: inline-flex
+  .nav_body
+    flex-flow: row wrap
+    > .nav-item:first-child
+      flex: 1 1 100%
+    > .nav-item .nav-link
+      padding: 0.25rem 0.75rem
+
+// 3) "Docs Menu" toggle: icon on the left, text next to it.
+.aside_toggle
+  flex-direction: row-reverse
+  justify-content: flex-end
+  gap: 0.5rem

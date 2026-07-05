@@ -300,3 +300,8 @@ html[data-mode="dark"]
 
 .lightbox__nav--next
   right: 1rem
+
+// --- Mobile nav cleanup ---------------------------------------------------
+// The theme's main.sass only imports "custom" (this file), so pull in the
+// mobile nav overrides from their own partial to keep this file readable.
+@import "mobile-nav"
