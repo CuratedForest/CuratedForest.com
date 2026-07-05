@@ -150,12 +150,11 @@ html[data-mode="dark"]
   > section > .toc a
     font-size: 0.85rem
 
-// Depth 4+ (e.g. Home Assistant > Label Based Features > children): stop
-// indenting further so deep sub-sections stay aligned with their siblings
-// (Setup, Overview, ...) instead of drifting off to the right. The smaller
-// font sizes still communicate the hierarchy.
+// Depth 4 (e.g. Home Assistant > Label Based Features > children): keep the
+// same constant per-level step so the sub-section reads one level deeper
+// than its siblings (Setup, Overview, ...) without drifting way off right.
 .aside_inner .aside_inner .aside_inner .aside_inner
-  padding-left: 0
+  padding-left: 0.75rem
   .section_title
     font-size: 0.8rem
   > section > .section_link
