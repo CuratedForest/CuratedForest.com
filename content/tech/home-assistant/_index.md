@@ -1,7 +1,7 @@
 ---
 title: Home Assistant
 type: docs
-weight: 1
+weight: 2
 ---
 
 Home Assistant is the central nervous system of Curated Forest. It

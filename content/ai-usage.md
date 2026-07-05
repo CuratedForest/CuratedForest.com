@@ -1,6 +1,6 @@
 ---
 title: AI Usage
-weight: 3
+weight: 8
 type: docs
 draft: false
 ---

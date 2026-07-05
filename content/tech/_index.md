@@ -1,6 +1,6 @@
 ---
 title: Technology
-weight: 2
+weight: 10
 ---
 
 Documentation of the open-source technology stack that runs Curated
