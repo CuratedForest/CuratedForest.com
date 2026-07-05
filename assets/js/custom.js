@@ -129,12 +129,23 @@
     // is already technically visible in the viewport but not in the
     // sidebar's own scroll box, and block:'start' scrolls the whole
     // document, yanking the page content out from under the reader.
+    //
+    // Timing: the compose theme's own featureHeading() scrolls the aside
+    // to the active LEAF link via `setTimeout(featureHeading, 50)` after
+    // load, which would override this and leave e.g. "World Record Size"
+    // at the top instead of "Plants". Run our scroll twice — once now
+    // (no flash of unscrolled sidebar) and again after the theme's 50 ms
+    // timer has fired — so our topmost-ancestor position wins.
     if (highest) {
-      var target = highest.querySelector(':scope > .section_title') || highest;
-      var asideRect = aside.getBoundingClientRect();
-      var targetRect = target.getBoundingClientRect();
-      var offset = targetRect.top - asideRect.top + aside.scrollTop;
-      aside.scrollTop = Math.max(0, offset - 8); // small top padding
+      var scrollToHighest = function () {
+        var target = highest.querySelector(':scope > .section_title') || highest;
+        var asideRect = aside.getBoundingClientRect();
+        var targetRect = target.getBoundingClientRect();
+        var offset = targetRect.top - asideRect.top + aside.scrollTop;
+        aside.scrollTop = Math.max(0, offset - 8); // small top padding
+      };
+      scrollToHighest();
+      setTimeout(scrollToHighest, 120);
     }
   });
 })();
