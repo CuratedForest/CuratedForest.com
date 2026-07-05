@@ -142,7 +142,7 @@ html[data-mode="dark"]
     font-size: 0.95rem
 
 .aside_inner .aside_inner .aside_inner
-  padding-left: 1.5rem
+  padding-left: 0.75rem
   .section_title
     font-size: 0.9rem
   > section > .section_link
@@ -150,8 +150,12 @@ html[data-mode="dark"]
   > section > .toc a
     font-size: 0.85rem
 
+// Depth 4+ (e.g. Home Assistant > Label Based Features > children): stop
+// indenting further so deep sub-sections stay aligned with their siblings
+// (Setup, Overview, ...) instead of drifting off to the right. The smaller
+// font sizes still communicate the hierarchy.
 .aside_inner .aside_inner .aside_inner .aside_inner
-  padding-left: 2.25rem
+  padding-left: 0
   .section_title
     font-size: 0.8rem
   > section > .section_link
@@ -197,6 +201,20 @@ html[data-mode="dark"]
 
 .color_choice
   display: none
+
+// --- Search results colors -------------------------------------------------
+// The compose theme colors every non-button link inside .content with
+// var(--theme) (green). On the search page (layouts/search/single.html)
+// each result is one big <a class="search_result"> wrapping the title AND
+// excerpt, so the entire results list turns green. Restore normal text
+// color for the excerpt and body, keeping the green accent only on the
+// result title.
+.content .search_result
+  color: var(--text) !important
+  p
+    color: var(--text)
+  h3
+    color: var(--theme)
 
 // --- Image gallery (layouts/_shortcodes/gallery.html) -------------------
 // Responsive CSS grid that fills the available column width with thumb-
