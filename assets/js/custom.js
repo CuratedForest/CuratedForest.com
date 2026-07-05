@@ -70,6 +70,21 @@
       // through "Label Based Features" by default; deeper levels start
       // collapsed so the tree doesn't explode on first load.
       if (depth >= 4) group.classList.add('collapsed');
+      // Special-case: children of the /software/ section (ESPHome,
+      // Kopia Backups, Grafana, TimescaleDB, Kubernetes, ...) start
+      // collapsed too. Software is a shallow catalog — each entry has
+      // its own sub-pages we don't want unfurled on every page load.
+      // We detect membership by walking up to find an .aside_inner
+      // whose title link points at /software/.
+      var ancestor = group.parentElement && group.parentElement.closest('.aside_inner');
+      while (ancestor) {
+        var link = ancestor.querySelector(':scope > .section_title > a');
+        if (link && /\/software\/?$/.test(link.getAttribute('href') || '')) {
+          group.classList.add('collapsed');
+          break;
+        }
+        ancestor = ancestor.parentElement && ancestor.parentElement.closest('.aside_inner');
+      }
       var title = group.querySelector(':scope > .section_title');
       if (!title) return;
       title.addEventListener('click', function (event) {
