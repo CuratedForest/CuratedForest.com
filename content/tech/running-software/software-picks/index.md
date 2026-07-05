@@ -2,7 +2,7 @@
 title: Software Picks
 weight: 5
 type: docs
-draft: true
+draft: false
 ---
 
 The open-source software that makes up the Curated Forest stack, and why

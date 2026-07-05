@@ -2,7 +2,7 @@
 title: Hardware Picks
 weight: 6
 type: docs
-draft: true
+draft: false
 ---
 
 The physical layer underneath the stack. Hardware choices at Curated Forest

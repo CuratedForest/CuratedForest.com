@@ -2,7 +2,7 @@
 title: AI Usage
 weight: 3
 type: docs
-draft: true
+draft: false
 ---
 
 How AI tools are (and aren't) used at Curated Forest — both in building the

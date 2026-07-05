@@ -2,7 +2,7 @@
 title: Architecture
 weight: 2
 type: docs
-draft: true
+draft: false
 ---
 
 A high-level look at how the pieces fit together at Curated Forest.

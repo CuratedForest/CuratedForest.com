@@ -2,7 +2,7 @@
 title: Best Practices
 weight: 4
 type: docs
-draft: true
+draft: false
 ---
 
 The operational habits that keep a self-hosted stack healthy over time.

@@ -2,7 +2,7 @@
 title: External Access
 weight: 3
 type: docs
-draft: true
+draft: false
 ---
 
 How services are reached from outside the local network — and, just as
