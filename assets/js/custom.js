@@ -71,15 +71,16 @@
       // collapsed so the tree doesn't explode on first load.
       if (depth >= 4) group.classList.add('collapsed');
       // Special-case: children of the /software/ section (ESPHome,
-      // Kopia Backups, Grafana, TimescaleDB, Kubernetes, ...) start
-      // collapsed too. Software is a shallow catalog — each entry has
-      // its own sub-pages we don't want unfurled on every page load.
-      // We detect membership by walking up to find an .aside_inner
-      // whose title link points at /software/.
+      // Kopia Backups, Grafana, TimescaleDB, Kubernetes, ...) also
+      // start collapsed. Software is a shallow catalog — each entry
+      // has its own sub-pages we don't want unfurled on every page
+      // load. Detect membership by walking up the .aside_inner chain
+      // looking for a title link that points at /software/.
       var ancestor = group.parentElement && group.parentElement.closest('.aside_inner');
       while (ancestor) {
         var link = ancestor.querySelector(':scope > .section_title > a');
-        if (link && /\/software\/?$/.test(link.getAttribute('href') || '')) {
+        var href = link && link.getAttribute('href');
+        if (href && /\/software\/?$/.test(href)) {
           group.classList.add('collapsed');
           break;
         }
@@ -95,13 +96,43 @@
         group.classList.toggle('collapsed');
       });
     });
-    // Expand the ancestor chain of the active page so the reader lands
-    // on their current spot with context, not on a fully-collapsed tree.
+    // Expand the ancestor chain of the active page and mark each
+    // ancestor's section title as active too. The sidebar template
+    // (layouts/_partials/sidebar.html) only stamps `active` on the
+    // exact match, so a leaf page like "Financial Viability" doesn't
+    // visually connect to its parent chain (Plants > Strawberries).
+    // We propagate `active` up the ancestor .aside_inner chain so the
+    // whole breadcrumb lights up green (styled by the theme's default
+    // .section_title.active rule).
+    //
+    // The root sidebar entry ("The Curated Forest") is depth 0 and
+    // matches the site home page — skip it so navigating anywhere
+    // doesn't turn the root green.
     var active = aside.querySelector('.section_title.active, .section_link.active');
     var node = active && active.closest('.aside_inner');
+    var highest = null;
     while (node) {
       node.classList.remove('collapsed');
+      if (depthOf(node) > 0) {
+        var t = node.querySelector(':scope > .section_title');
+        if (t) t.classList.add('active');
+        highest = node;
+      }
       node = node.parentElement && node.parentElement.closest('.aside_inner');
+    }
+    // Scroll the topmost highlighted ancestor into view. Without this
+    // the sidebar's initial scroll position lands on the current leaf
+    // page (which may be far down the tree) and the section header —
+    // the piece that gives the reader context — is off-screen.
+    if (highest) {
+      var target = highest.querySelector(':scope > .section_title') || highest;
+      // "nearest" avoids yanking the page itself; we just want the
+      // sidebar's own scroll container to line up on the ancestor.
+      try {
+        target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      } catch (e) {
+        target.scrollIntoView();
+      }
     }
   });
 })();
