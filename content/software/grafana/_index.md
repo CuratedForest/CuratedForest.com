@@ -1,7 +1,9 @@
 ---
 title: Grafana
-weight: 5
+weight: 4
 type: docs
+aliases:
+  - /tech/grafana/
 ---
 
 Grafana is the visualization layer that turns raw time-series data

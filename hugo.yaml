@@ -42,6 +42,7 @@ params:
   docSections:
     - ""
     - tech
+    - software
     - plants
   # Enable the theme's built-in Fuse.js site search (renders search box
   # behavior in _partials/search.html + js/search.min.js).

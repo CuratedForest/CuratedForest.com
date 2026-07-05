@@ -3,6 +3,8 @@ title: Immich
 weight: 7
 type: docs
 draft: true
+aliases:
+  - /tech/immich/
 ---
 
 restore from backup

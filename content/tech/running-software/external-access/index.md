@@ -23,4 +23,4 @@ importantly, how they're *not*.
   where possible.
 
 The specific proxy and overlay tooling picks live under
-[Software Picks](../software-picks/).
+[Software Picks](/software/software-picks/).

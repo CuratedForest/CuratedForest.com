@@ -1,8 +1,10 @@
 ---
 title: Hardware Picks
-weight: 6
+weight: 99
 type: docs
 draft: false
+aliases:
+  - /tech/running-software/hardware-picks/
 ---
 
 The physical layer underneath the stack. Hardware choices at Curated Forest
@@ -12,17 +14,17 @@ benchmarks.
 
 ## Compute
 
-- **Cluster nodes** running the [k3s](../../kubernetes/) cluster, sized for
+- **Cluster nodes** running the [k3s](/software/kubernetes/) cluster, sized for
   steady-state load with headroom for spikes.
 
 ## Storage
 
-- **Bulk disks** for the [SeaweedFS](../../seaweed-fs/) object store.
+- **Bulk disks** for the [SeaweedFS](/software/seaweed-fs/) object store.
 - **Fast local storage** for databases and workloads that need low latency.
 
 ## Edge & sensors
 
-- **ESP32 microcontrollers** running [ESPHome](../../esphome/) for the
+- **ESP32 microcontrollers** running [ESPHome](/software/esphome/) for the
   sensor and actuator network.
 
 ## Selection criteria

@@ -1,7 +1,9 @@
 ---
 title: Kopia Backups
-weight: 4
+weight: 3
 type: docs
+aliases:
+  - /tech/kopia-backups/
 ---
 
 Kopia handles backups for the Curated Forest workstation and server

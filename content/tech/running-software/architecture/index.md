@@ -10,8 +10,8 @@ A high-level look at how the pieces fit together at Curated Forest.
 ## Layers
 
 - **Hardware** — the physical nodes and storage the stack runs on
-  (see [Hardware Picks](../hardware-picks/)).
-- **Orchestration** — a [k3s](../../kubernetes/) cluster schedules and
+  (see [Hardware Picks](/tech/hardware-picks/)).
+- **Orchestration** — a [k3s](/software/kubernetes/) cluster schedules and
   restarts workloads.
 - **Storage** — distributed object storage plus per-node filesystems,
   backed up off-site.

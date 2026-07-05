@@ -1,7 +1,9 @@
 ---
 title: ESPHome
-weight: 3
+weight: 2
 type: docs
+aliases:
+  - /tech/esphome/
 ---
 
 ESPHome is the firmware layer that turns inexpensive ESP32
