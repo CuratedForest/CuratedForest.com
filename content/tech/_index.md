@@ -7,6 +7,7 @@ Documentation of the open-source technology stack that runs Curated
 Forest — see [the homepage](../) for the broader "what is this stack"
 pitch.
 
+{{< button "./running-software/" "Running Software" "mb-1" >}}
 {{< button "./home-assistant/" "Home Assistant" "mb-1" >}}
 {{< button "./kubernetes/" "Kubernetes" "mb-1" >}}
 {{< button "./esphome/" "ESPHome" "mb-1" >}}
