@@ -113,26 +113,28 @@
     var highest = null;
     while (node) {
       node.classList.remove('collapsed');
+      // depth 0 is the site root ("The Curated Forest") — skip so
+      // navigating anywhere doesn't turn the root entry green.
       if (depthOf(node) > 0) {
         var t = node.querySelector(':scope > .section_title');
         if (t) t.classList.add('active');
-        highest = node;
+        highest = node; // overwritten on each loop, last write wins
       }
       node = node.parentElement && node.parentElement.closest('.aside_inner');
     }
-    // Scroll the topmost highlighted ancestor into view. Without this
-    // the sidebar's initial scroll position lands on the current leaf
-    // page (which may be far down the tree) and the section header —
-    // the piece that gives the reader context — is off-screen.
+    // Scroll the sidebar (which is its own overflow:auto container) so
+    // the topmost highlighted ancestor lines up near the top. Using
+    // aside.scrollTop directly instead of Element.scrollIntoView because
+    // scrollIntoView with block:'nearest' does nothing when the element
+    // is already technically visible in the viewport but not in the
+    // sidebar's own scroll box, and block:'start' scrolls the whole
+    // document, yanking the page content out from under the reader.
     if (highest) {
       var target = highest.querySelector(':scope > .section_title') || highest;
-      // "nearest" avoids yanking the page itself; we just want the
-      // sidebar's own scroll container to line up on the ancestor.
-      try {
-        target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-      } catch (e) {
-        target.scrollIntoView();
-      }
+      var asideRect = aside.getBoundingClientRect();
+      var targetRect = target.getBoundingClientRect();
+      var offset = targetRect.top - asideRect.top + aside.scrollTop;
+      aside.scrollTop = Math.max(0, offset - 8); // small top padding
     }
   });
 })();
