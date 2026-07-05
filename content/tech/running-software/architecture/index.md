@@ -7,6 +7,15 @@ draft: false
 
 A high-level look at how the pieces fit together at Curated Forest.
 
+
+## Acceptance Criteria
+- Container Based
+- Modifiable
+- Git optional
+- Build on community
+
+## Drawing the Line
+
 ## Layers
 
 - **Hardware** — the physical nodes and storage the stack runs on
