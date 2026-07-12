@@ -1,0 +1,32 @@
+{{/*
+  document.html (site override)
+
+  Forked from the compose theme's layouts/_partials/document.html. Adds
+  a per-page Table of Contents on every non-home page that has one.
+  Placement is section-driven so we can compare styles at a glance:
+
+    * content/plants/**  -> .page-toc--floating (sticky right panel)
+    * everything else    -> .page-toc--collapsible (details at top)
+
+  Home page (.IsHome) is left alone.
+*/}}
+<div class="grid-auto">
+{{- partial "sidebar" . }}
+<main class="content">
+<h1>{{ .Title }}</h1>
+{{- if and (not .IsHome) .TableOfContents (gt (len (string .TableOfContents)) 0) }}
+{{- if hasPrefix .Path "plants/" }}
+<aside class="page-toc page-toc--floating">
+{{ .TableOfContents }}
+</aside>
+{{- else }}
+<details class="page-toc page-toc--collapsible">
+<summary>On this page</summary>
+{{ .TableOfContents }}
+</details>
+{{- end }}
+{{- end }}
+{{- .Content }}
+{{ partial "pager" . }}
+</main>
+</div>

@@ -318,6 +318,100 @@ html[data-mode="dark"]
 .lightbox__nav--next
   right: 1rem
 
+// --- Edit-on-GitHub nav item ---------------------------------------------
+// Rendered by layouts/_partials/nav.html as the first item in .nav_body
+// (immediately to the left of the search box) when the current page has
+// a backing content file. The icon is a raster/vector GitHub Mark stored
+// at static/icons/github.svg and displayed at ~1.25rem so it visually
+// balances the search field height without dominating the nav row.
+.nav_edit .nav-link
+  display: inline-flex
+  align-items: center
+  gap: 0.35rem
+  padding: 0 0.5rem
+
+.nav_edit_icon
+  width: 1.25rem
+  height: 1.25rem
+  // Invert the black GitHub Mark to white for the dark-mode UI. The mark
+  // is a single-color SVG; a simple invert filter is cheaper than shipping
+  // a second asset.
+  filter: invert(1)
+
+.nav_edit_label
+  font-size: 0.9rem
+
+// --- Table of contents (per-page) -----------------------------------------
+// Rendered by layouts/_partials/document.html when .TableOfContents is
+// non-empty. Two placement variants, chosen by the section:
+//   * .page-toc--floating: absolute-positioned floating panel on the right
+//     side of the viewport (used under content/plants/*)
+//   * .page-toc--collapsible: <details> element inline at the top of the
+//     article (used under content/tech/* and everything else by default)
+//
+// Both variants share the base .page-toc rule so the styling of the list
+// itself stays in sync.
+.page-toc
+  a
+    color: var(--text)
+    text-decoration: none
+    &:hover
+      color: var(--theme)
+  ul
+    list-style: none
+    padding-left: 0.75rem
+    margin: 0.25rem 0
+  > nav > ul,
+  > ul
+    padding-left: 0
+
+.page-toc--collapsible
+  margin: 0 0 1.25rem 0
+  padding: 0.5rem 0.75rem
+  background-color: rgba(255, 255, 255, 0.04)
+  border: 1px solid rgba(255, 255, 255, 0.08)
+  border-radius: 0.35rem
+  summary
+    cursor: pointer
+    font-weight: 600
+    user-select: none
+    padding: 0.15rem 0
+  &[open] summary
+    margin-bottom: 0.35rem
+
+// Floating right-side TOC. On viewports narrower than the theme's `.main`
+// max-width the panel falls back to collapsible layout at the top of the
+// article so it doesn't overlap the sidebar or content. The theme's
+// grid-auto gives .content some room on the right; we peek out of it
+// with position:sticky and translate off to the right by a hair.
+.page-toc--floating
+  display: none
+
+@media (min-width: 1400px)
+  .page-toc--floating
+    display: block
+    position: sticky
+    float: right
+    top: 6rem
+    // Move the TOC out of the article's right column so it sits in the
+    // (otherwise unused) gutter between .content and the viewport edge.
+    margin: 0 -18rem 1rem 1.25rem
+    width: 16rem
+    max-height: calc(100vh - 8rem)
+    overflow-y: auto
+    padding: 0.75rem 0.9rem
+    background-color: rgba(20, 20, 22, 0.65)
+    backdrop-filter: blur(6px)
+    -webkit-backdrop-filter: blur(6px)
+    border-radius: 0.5rem
+    font-size: 0.9rem
+    &::before
+      content: "On this page"
+      display: block
+      font-weight: 600
+      margin-bottom: 0.4rem
+      color: var(--theme)
+
 // --- Mobile nav cleanup ---------------------------------------------------
 // The theme's main.sass only imports "custom" (this file), so pull in the
 // mobile nav overrides from their own partial to keep this file readable.

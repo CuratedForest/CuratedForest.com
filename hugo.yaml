@@ -18,7 +18,27 @@ outputs:
     - HTML
     - RSS
     - JSON
+# Markdown configuration. The Goldmark defaults render inline HTML as
+# text (`unsafe: false`) which broke a couple of raw <details> snippets
+# in older content; we opt in to unsafe HTML so authored HTML passes
+# through. `tableOfContents` bounds the auto-generated TOC surfaced by
+# the document.html override to h2..h4 headings so it stays useful on
+# long pages without listing every micro-subhead.
+markup:
+  goldmark:
+    renderer:
+      unsafe: true
+  tableOfContents:
+    startLevel: 2
+    endLevel: 4
+    ordered: false
+# Sitemap and robots.txt. `disableKinds` drops the sitemap so search
+# engines have no crawl map even if they ignore robots.txt. The
+# `robots.txt` at static/robots.txt does the primary heavy lifting.
+disableKinds:
+  - sitemap
 params:
+
   # The site is dark-themed only. enableDarkMode flips the <html class>
   # to "dark" at render time; defaultLightingMode pins the data-mode
   # attribute so the theme's mode.js doesn't fall back to system pref or

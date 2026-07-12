@@ -1,0 +1,71 @@
+{{/*
+  nav.html (site override)
+
+  Forked from the compose theme's layouts/_partials/nav.html. The only
+  change: an "Edit on GitHub" link is inserted as the first item inside
+  `.nav_body`, immediately to the left of the search box.
+
+  The link points at GitHub's web editor (`.../edit/<branch>/<path>`),
+  which opens a fork+PR flow for anyone without direct write access.
+  It's only rendered when the current page has a backing file
+  (`.File` is nil on virtual pages like /search/ and 404s).
+*/}}
+{{- $config := site.Params }}
+<nav class="wrap nav menu">
+<a href='{{ absLangURL "" }}' class="nav_brand">
+{{- $logos := $config.logo }}
+{{- $litPath := absURL ($logos.lightMode) }}
+{{- $darkPath := absURL ($logos.darkMode) }}
+<picture data-lit="{{ $litPath }}" data-dark="{{ $darkPath }}">
+<img src="{{ $litPath }}" alt="{{ site.Title }} Logo">
+</picture>
+<div class="nav_toggle toggle" title='{{ T "site_menu" }}'>
+{{- partial "sprite" (dict "icon" "harmburger") }}
+</div>
+</a>
+<ul class="nav_body">
+{{- with .File }}
+{{- $repoBase := "https://github.com/CuratedForest/CuratedForest.com" }}
+{{- $branch := "main" }}
+{{- $editURL := printf "%s/edit/%s/content/%s" $repoBase $branch .Path }}
+<li class="nav-item nav_edit">
+<a class="nav-link" href="{{ $editURL }}" target="_blank" rel="noopener" title="Edit this page on GitHub">
+<img src='{{ absURL "icons/github.svg" }}' alt="Edit on GitHub" class="nav_edit_icon">
+<span class="nav_edit_label">Edit</span>
+</a>
+</li>
+{{- end }}
+<li class="nav-item">
+{{- partial "search" . }}
+</li>
+{{- $p := . }}
+{{- range site.Menus.main }}
+<li class="nav-item">
+{{- $active := or ($p.IsMenuCurrent "main" .) ($p.HasMenuCurrent "main" .) }}
+{{- with .Page }}
+{{- $active = or $active ( $.IsDescendant .)  }}
+{{- end }}
+{{- $url := absLangURL .URL }}
+{{- if or (hasPrefix .URL "http") (hasPrefix .URL "www.") }}
+{{- $url = .URL }}
+{{- end }}
+<a class="nav-link{{if $active }} active{{end}}" href="{{ $url }}"><span{{if $active }} class="active"{{end}}>{{ T .Identifier | default .Name }}</span></a>
+</li>
+{{- end }}
+{{- $repo := $config.source }}
+{{- with $config.source }}
+<li class="nav-item nav_repo">
+<a class="nav-link" href="{{ .url }}" target="_blank">
+{{- if .iconLight }}
+{{- $litPath := absURL .iconLight }}
+{{- $darkPath := absURL .iconDark }}
+<picture data-lit="{{ $litPath }}" data-dark="{{ $darkPath }}">
+<img src="{{ $litPath }}" alt="{{ .name }} Repo">
+</picture>
+{{- else }}{{ .name }}{{ end }}
+</a>
+</li>
+{{- end }}
+<li class="nav-item">{{ partial "mode" . }}</li>
+</ul>
+</nav>
