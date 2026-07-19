@@ -2,8 +2,9 @@
   nav.html (site override)
 
   Forked from the compose theme's layouts/_partials/nav.html. The only
-  change: an "Edit on GitHub" link is inserted as the first item inside
-  `.nav_body`, immediately to the left of the search box.
+  change: an "Edit on GitHub" link is inserted inside `.nav_body`,
+  immediately to the RIGHT of the search box (order: search, then edit,
+  then the rest of the theme's items).
 
   The link points at GitHub's web editor (`.../edit/<branch>/<path>`),
   which opens a fork+PR flow for anyone without direct write access.
@@ -24,6 +25,9 @@
 </div>
 </a>
 <ul class="nav_body">
+<li class="nav-item">
+{{- partial "search" . }}
+</li>
 {{- with .File }}
 {{- $repoBase := "https://github.com/CuratedForest/CuratedForest.com" }}
 {{- $branch := "main" }}
@@ -35,9 +39,6 @@
 </a>
 </li>
 {{- end }}
-<li class="nav-item">
-{{- partial "search" . }}
-</li>
 {{- $p := . }}
 {{- range site.Menus.main }}
 <li class="nav-item">
