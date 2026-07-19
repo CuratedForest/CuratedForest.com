@@ -1,0 +1,50 @@
+{{- /*
+  layouts/_default/_markup/render-link.html
+  Resolves plain Obsidian/Hugo Markdown links at build time.
+  - Relative (../notes/page.md, sibling.md) AND absolute (/notes/page.md) targets
+  - Strips .md, carries #anchors through (slugified with anchorize)
+  - External links (any URL scheme) pass through untouched (+ optional target/rel)
+  - Broken internal links => warnf + class="broken-link" (build does NOT fail)
+*/ -}}
+{{- $u := urls.Parse .Destination -}}
+{{- $href := .Destination -}}
+{{- $attrs := dict -}}
+
+{{- if or $u.IsAbs (ne $u.Scheme "") -}}
+  {{- /* EXTERNAL: http(s), mailto:, tel:, etc. Leave the destination alone. */ -}}
+  {{- /* Optional: open in new tab + harden. Delete these two lines if unwanted. */ -}}
+  {{- $attrs = merge $attrs (dict "target" "_blank" "rel" "noopener noreferrer") -}}
+
+{{- else if strings.HasPrefix .Destination "#" -}}
+  {{- /* SAME-PAGE ANCHOR: #heading => current page URL + slugified fragment. */ -}}
+  {{- $href = printf "%s#%s" .PageInner.RelPermalink (anchorize $u.Fragment) -}}
+
+{{- else -}}
+  {{- /* INTERNAL: strip a leading ./ and a trailing .md before lookup. */ -}}
+  {{- $path := strings.TrimSuffix ".md" (strings.TrimPrefix "./" $u.Path) -}}
+  {{- /* GetPage resolves absolute (/x) and page-relative (../x) paths and
+         returns nil (not an error) on a miss. Try the stripped path, the raw
+         path, and the bundle folder (…/index.md => …/). */ -}}
+  {{- with or
+      ($.PageInner.GetPage $path)
+      ($.PageInner.GetPage $u.Path)
+      ($.PageInner.GetPage (strings.TrimSuffix "/index" $path))
+  -}}
+    {{- $href = .RelPermalink -}}
+    {{- with $u.RawQuery -}}{{- $href = printf "%s?%s" $href . -}}{{- end -}}
+    {{- with $u.Fragment -}}{{- $href = printf "%s#%s" $href (anchorize .) -}}{{- end -}}
+  {{- else with or ($.PageInner.Resources.Get $u.Path) (resources.Get $u.Path) -}}
+    {{- /* Non-page file living as a page resource or global (assets) resource. */ -}}
+    {{- $href = .RelPermalink -}}
+  {{- else -}}
+    {{- /* BROKEN internal link: warn (non-fatal) and flag for CSS. */ -}}
+    {{- warnf "render-link: unresolved destination %q in %s" .Destination .Page.Path -}}
+    {{- $attrs = merge $attrs (dict "class" "broken-link") -}}
+  {{- end -}}
+{{- end -}}
+{{- /* Emit the anchor, preserving title and text. */ -}}
+<a href="{{ $href | safeURL }}"
+  {{- range $k, $v := $attrs }} {{ printf "%s=%q" $k $v | safeHTMLAttr }}{{ end }}
+  {{- with .Title }} title="{{ . }}"{{ end -}}
+>{{ .Text | safeHTML }}</a>
+{{- /**/ -}}

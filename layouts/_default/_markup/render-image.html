@@ -1,0 +1,27 @@
+{{- /*
+  layouts/_default/_markup/render-image.html
+  Resolves plain Markdown image sources at build time.
+  - Relative and absolute (/…) sources
+  - Page-bundle resources, section resources, and static/assets globals
+  - Remote (http/https) sources pass through untouched
+  - Preserves alt (.PlainText) and title
+*/ -}}
+{{- $u := urls.Parse .Destination -}}
+{{- $src := .Destination -}}
+
+{{- if not $u.IsAbs -}}
+  {{- $path := strings.TrimPrefix "./" $u.Path -}}
+  {{- with or
+      (.PageInner.Resources.Get $path)
+      (and (ne .Page.BundleType "leaf") (.Page.CurrentSection.Resources.Get $path))
+      (resources.Get $path)
+  -}}
+    {{- $src = .RelPermalink -}}
+  {{- else -}}
+    {{- warnf "render-image: unresolved image %q in %s" .Destination .Page.Path -}}
+  {{- end -}}
+{{- end -}}
+<img src="{{ $src | safeURL }}" alt="{{ .PlainText }}"
+  {{- with .Title }} title="{{ . }}"{{ end -}}
+>
+{{- /**/ -}}
