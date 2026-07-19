@@ -342,16 +342,31 @@ html[data-mode="dark"]
   font-size: 0.9rem
 
 // --- Table of contents (per-page) -----------------------------------------
-// Rendered by layouts/_partials/document.html when .TableOfContents is
-// non-empty. Two placement variants, chosen by the section:
-//   * .page-toc--floating: absolute-positioned floating panel on the right
-//     side of the viewport (used under content/plants/*)
-//   * .page-toc--collapsible: <details> element inline at the top of the
-//     article (used under content/tech/* and everything else by default)
+// Rendered by layouts/_partials/document.html as the FIRST child of
+// <main class="content"> whenever .TableOfContents is non-empty. Single
+// unified style across all sections:
 //
-// Both variants share the base .page-toc rule so the styling of the list
-// itself stays in sync.
+//   * On wide viewports (>= 900px, effectively any non-mobile layout):
+//     floats to the right of the article inside the .content column so
+//     the article body text WRAPS AROUND the panel. Always expanded —
+//     no <details>/<summary> collapsing, no section-based branching.
+//
+//   * On narrow viewports: renders full-width above the article as a
+//     plain block. Floating would starve the article of horizontal room,
+//     and a sticky panel would overlap the mobile sidebar drawer.
+//
+// The theme's <h1> is a sibling that comes AFTER the .page-toc in source
+// order, so `float: right` correctly hands the top-left of the content
+// column to the heading + body copy, with the TOC hugging the right edge.
 .page-toc
+  margin: 0 0 1rem 0
+  padding: 0.75rem 0.9rem
+  background-color: rgba(20, 20, 22, 0.65)
+  backdrop-filter: blur(6px)
+  -webkit-backdrop-filter: blur(6px)
+  border: 1px solid rgba(255, 255, 255, 0.08)
+  border-radius: 0.5rem
+  font-size: 0.9rem
   a
     color: var(--text)
     text-decoration: none
@@ -365,52 +380,32 @@ html[data-mode="dark"]
   > ul
     padding-left: 0
 
-.page-toc--collapsible
-  margin: 0 0 1.25rem 0
-  padding: 0.5rem 0.75rem
-  background-color: rgba(255, 255, 255, 0.04)
-  border: 1px solid rgba(255, 255, 255, 0.08)
-  border-radius: 0.35rem
-  summary
-    cursor: pointer
-    font-weight: 600
-    user-select: none
-    padding: 0.15rem 0
-  &[open] summary
-    margin-bottom: 0.35rem
+.page-toc__title
+  font-weight: 600
+  margin-bottom: 0.4rem
+  color: var(--theme)
 
-// Floating right-side TOC. On viewports narrower than the theme's `.main`
-// max-width the panel falls back to collapsible layout at the top of the
-// article so it doesn't overlap the sidebar or content. The theme's
-// grid-auto gives .content some room on the right; we peek out of it
-// with position:sticky and translate off to the right by a hair.
-.page-toc--floating
-  display: none
-
-@media (min-width: 1400px)
-  .page-toc--floating
-    display: block
-    position: sticky
+// Wide-viewport float. 900px is a comfortable threshold: the theme's
+// docs layout has already grown its content column past ~600px by then,
+// leaving room for a 16rem panel plus wrap-around body copy.
+//
+// `shape-outside: margin-box` lets inline text hug the actual box
+// boundary (rounded corners included) rather than an invisible
+// rectangle, which reads better with the rounded translucent surface.
+@media (min-width: 900px)
+  .page-toc
     float: right
-    top: 6rem
-    // Move the TOC out of the article's right column so it sits in the
-    // (otherwise unused) gutter between .content and the viewport edge.
-    margin: 0 -18rem 1rem 1.25rem
     width: 16rem
-    max-height: calc(100vh - 8rem)
-    overflow-y: auto
-    padding: 0.75rem 0.9rem
-    background-color: rgba(20, 20, 22, 0.65)
-    backdrop-filter: blur(6px)
-    -webkit-backdrop-filter: blur(6px)
-    border-radius: 0.5rem
-    font-size: 0.9rem
-    &::before
-      content: "On this page"
-      display: block
-      font-weight: 600
-      margin-bottom: 0.4rem
-      color: var(--theme)
+    max-width: 40%
+    margin: 0 0 0.75rem 1.25rem
+    shape-outside: margin-box
+
+// The <h1> and the article body come after the .page-toc in source
+// order so they wrap around it naturally. The pager sits at the very
+// bottom of the article and should reset to full width; without an
+// explicit clear it can end up floated alongside a tall TOC.
+.content .pager
+  clear: both
 
 // --- Mobile nav cleanup ---------------------------------------------------
 // The theme's main.sass only imports "custom" (this file), so pull in the
