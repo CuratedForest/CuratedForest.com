@@ -402,15 +402,6 @@ html[data-mode="dark"]
   border: 1px solid rgba(255, 255, 255, 0.08)
   border-radius: 0.5rem
   font-size: 0.85rem
-  // Links are plain text-colored; the heading currently in view gets
-  // .active from the scroll-spy in custom.js and turns green.
-  a
-    color: var(--text)
-    text-decoration: none
-    &:hover
-      color: var(--theme)
-    &.active
-      color: var(--theme)
   ul
     list-style: none
     padding-left: 0.75rem
@@ -418,6 +409,19 @@ html[data-mode="dark"]
   > nav > ul,
   > ul
     padding-left: 0
+
+// Links are plain text-colored; the heading currently in view gets
+// .active from the scroll-spy in custom.js and turns green.
+// NB: the theme's ".content a:not(.button)" rule (specificity 0,2,1)
+// colors every link in <main class="content"> green, so these rules
+// need the extra .content prefix (0,3,1) to win.
+.content .page-toc a
+  color: var(--text)
+  text-decoration: none
+  &:hover
+    color: var(--theme)
+  &.active
+    color: var(--theme)
 
 .page-toc__title
   font-weight: 600

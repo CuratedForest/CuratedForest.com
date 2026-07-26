@@ -1,3 +1,8 @@
+---
+title: Home Assistant
+type: docs
+weight: 7
+---
 
 # Home Assistant Operating System (HAOS)
 #### What is it?
