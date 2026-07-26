@@ -111,6 +111,10 @@ non-home page that has one (`.page-toc` in `assets/sass/_custom.sass`):
   `assets/js/custom.js` (`setupPageTocSpy`) adds `.active` to the link
   whose heading is in view, turning it green (`var(--theme)`). The
   theme's own scroll-spy only covers the sidebar TOC, not this one.
+  The link rules are written as `.content .page-toc a` on purpose: the
+  theme's `.content a:not(.button)` (specificity 0,2,1) colors every
+  link in `<main class="content">` green, and a bare `.page-toc a`
+  (0,1,1) loses to it.
 
 `hugo.yaml` bounds the TOC entries to h2–h4
 (`markup.tableOfContents.startLevel: 2`, `endLevel: 4`).
