@@ -98,7 +98,7 @@ non-home page that has one (`.page-toc` in `assets/sass/_custom.sass`):
   to precede the heading and body.
 - Always expanded. No `<details>` / `<summary>`, no per-section
   branching.
-- On viewports ≥ **900 px**: `float: right`, `width: 16rem` (capped at
+- On viewports ≥ **900 px**: `float: right`, `width: 14rem` (capped at
   `max-width: 40%`), with `shape-outside: margin-box` so article text
   hugs the rounded translucent panel.
 - On narrower viewports: renders full-width above the article as a
@@ -107,6 +107,10 @@ non-home page that has one (`.page-toc` in `assets/sass/_custom.sass`):
   drawer.
 - `.content .pager` has `clear: both` so the prev/next pager at the
   bottom of the article never floats alongside a tall TOC.
+- Colors: all TOC links are plain text color; a scroll-spy in
+  `assets/js/custom.js` (`setupPageTocSpy`) adds `.active` to the link
+  whose heading is in view, turning it green (`var(--theme)`). The
+  theme's own scroll-spy only covers the sidebar TOC, not this one.
 
 `hugo.yaml` bounds the TOC entries to h2–h4
 (`markup.tableOfContents.startLevel: 2`, `endLevel: 4`).
@@ -126,9 +130,18 @@ sections. The rules it hard-codes:
 - Children of `/software/` auto-collapse (it's a shallow catalog).
 - The active page's ancestor `.aside_inner` chain is force-expanded and
   each ancestor `.section_title` gets `.active` (so the whole breadcrumb
-  lights up green).
+  lights up orange — the sidebar's active color, see the color rules at
+  the top of the depth-styling block in `_custom.sass`).
 - Depth 0 (site root, "The Curated Forest") is excluded — no chevron,
   never collapses.
+
+Sidebar link colors live at the top of the depth-styling block in
+`assets/sass/_custom.sass`: root title + tier-1 + tier-2 entries are
+green (`var(--theme)`), tier 3+ inherit the default text color, and
+`.active` is orange. The green rules use exact-depth child selectors
+anchored at `.aside` on purpose — descendant selectors like
+`.aside_inner .aside_inner` match every level below the root and leak
+green into tier 3+.
 
 **If you rename `/software/`, restructure the tree deeper than 4 levels,
 or change the number of top-level sections, revisit both:**

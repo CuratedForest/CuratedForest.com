@@ -110,21 +110,35 @@ html[data-mode="dark"]
 // (Overview > Infra > HAOS > Label Based Features > children) and falls
 // back gracefully if we ever go deeper.
 //
-// Level 1 and 2 links are green; the active/selected item is orange.
+// Color scheme: the root title, tier-1, and tier-2 entries are green
+// (var(--theme)); tier 3 and deeper keep the default text color; the
+// active/selected page (and its ancestor chain) is orange.
+//
+// The green rules use exact-depth child selectors anchored at .aside.
+// A plain descendant selector like ".aside_inner .aside_inner" matches
+// EVERY level below the root and leaks green into tier 3+ — that was
+// the bug in the first version of this block.
+//
+// DOM recap (see layouts/_partials/sidebar.html): each .aside_inner is
+// <h2 class="section_title"> followed by a plain <section> wrapper that
+// holds leaf <h3 class="section_link"> pages and nested .aside_inner
+// sub-sections.
 
-.aside_inner .aside_inner
-  .section_title a
-    color: #4caf50
-  > section > .section_link a
-    color: #4caf50
+// Root title ("The Curated Forest").
+.aside > .aside_inner > .section_title a,
+// Tier-1 leaf pages (Search, AI Usage, About Me).
+.aside > .aside_inner > section > .section_link a,
+// Tier-1 section titles (Plants, Software, Technology).
+.aside > .aside_inner > section > .aside_inner > .section_title a,
+// Tier-2 leaf pages (direct pages of a tier-1 section).
+.aside > .aside_inner > section > .aside_inner > section > .section_link a,
+// Tier-2 section titles (Aeroponics, Strawberries, Running Software).
+.aside > .aside_inner > section > .aside_inner > section > .aside_inner > .section_title a
+  color: var(--theme)
 
-.aside_inner .aside_inner .aside_inner
-  .section_title a
-    color: #4caf50
-  > section > .section_link a
-    color: #4caf50
-
-// Active (selected) item overrides to orange at all depths.
+// Active (selected) item overrides to orange at all depths. custom.js
+// propagates .active up the ancestor .aside_inner chain, so the whole
+// breadcrumb of the current page reads orange.
 .aside_inner .aside_inner .section_title.active a,
 .aside_inner .aside_inner .section_link.active a
   color: #ff9800 !important
@@ -381,29 +395,29 @@ html[data-mode="dark"]
 // column to the heading + body copy, with the TOC hugging the right edge.
 .page-toc
   margin: 0 0 1rem 0
-  padding: 0.75rem 0.9rem
+  padding: 0.6rem 0.8rem
   background-color: rgba(20, 20, 22, 0.65)
   backdrop-filter: blur(6px)
   -webkit-backdrop-filter: blur(6px)
   border: 1px solid rgba(255, 255, 255, 0.08)
   border-radius: 0.5rem
-  font-size: 0.9rem
+  font-size: 0.85rem
+  // Links are plain text-colored; the heading currently in view gets
+  // .active from the scroll-spy in custom.js and turns green.
   a
     color: var(--text)
     text-decoration: none
     &:hover
       color: var(--theme)
+    &.active
+      color: var(--theme)
   ul
     list-style: none
     padding-left: 0.75rem
-    margin: 0.25rem 0
+    margin: 0.2rem 0
   > nav > ul,
   > ul
     padding-left: 0
-  // Level 1 items (direct children of top-level ul) are green.
-  > nav > ul > li > a,
-  > ul > li > a
-    color: #4caf50
 
 .page-toc__title
   font-weight: 600
@@ -420,7 +434,7 @@ html[data-mode="dark"]
 @media (min-width: 900px)
   .page-toc
     float: right
-    width: 16rem
+    width: 14rem
     max-width: 40%
     margin: 0 0 0.75rem 1.25rem
     shape-outside: margin-box

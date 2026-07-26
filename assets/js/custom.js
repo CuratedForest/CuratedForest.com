@@ -3,7 +3,7 @@
 // assets/js/custom.js (the theme prefers this path over the default
 // js/custom.js it ships).
 //
-// Two features:
+// Three features:
 //
 // 1. Force dark mode at every page load. The site has no mode toggle
 //    (see layouts/_partials/mode.html); enableDarkMode and
@@ -23,6 +23,11 @@
 //        Features" children before having to click anything.
 //      * The ancestor chain of the active page is always expanded so
 //        deep pages land with their location in context.
+//
+// 3. Page-ToC scroll-spy: marks the .page-toc link whose heading is
+//    currently in view with .active so the ToC highlights the reader's
+//    position (styled green in _custom.sass). The theme's own spy only
+//    covers the sidebar ToC, not the in-content one.
 (function forceDarkMode() {
   if (typeof document === 'undefined' || !document.documentElement) return;
   var doc = document.documentElement;
@@ -147,5 +152,55 @@
       scrollToHighest();
       setTimeout(scrollToHighest, 120);
     }
+  });
+})();
+
+// Page-ToC scroll-spy. The theme's own spy (customizeSidebar in
+// index.js) only watches the sidebar's .toc_active nav; the in-content
+// .page-toc rendered by layouts/_partials/document.html gets no active
+// tracking. Mirror the theme's approach: the current section is the
+// last heading whose top sits above the viewport midpoint.
+(function setupPageTocSpy() {
+  if (typeof document === 'undefined') return;
+  function ready(fn) {
+    if (document.readyState !== 'loading') fn();
+    else document.addEventListener('DOMContentLoaded', fn);
+  }
+  ready(function () {
+    var toc = document.querySelector('.page-toc nav');
+    if (!toc) return;
+    var links = Array.prototype.slice.call(toc.querySelectorAll('a'));
+    if (!links.length) return;
+    var pairs = [];
+    links.forEach(function (link) {
+      var hash = link.hash || '';
+      if (hash.charAt(0) !== '#') return;
+      var heading = document.getElementById(decodeURIComponent(hash.slice(1)));
+      if (heading) pairs.push({ link: link, heading: heading });
+    });
+    if (!pairs.length) return;
+    var ticking = false;
+    function update() {
+      ticking = false;
+      var midpoint = window.innerHeight / 2;
+      var current = pairs[0];
+      for (var i = 0; i < pairs.length; i++) {
+        if (pairs[i].heading.getBoundingClientRect().top < midpoint) {
+          current = pairs[i];
+        } else {
+          break;
+        }
+      }
+      pairs.forEach(function (pair) {
+        pair.link.classList.toggle('active', pair === current);
+      });
+    }
+    window.addEventListener('scroll', function () {
+      if (!ticking) {
+        ticking = true;
+        window.requestAnimationFrame(update);
+      }
+    }, { passive: true });
+    update();
   });
 })();
