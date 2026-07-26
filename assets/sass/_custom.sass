@@ -109,6 +109,25 @@ html[data-mode="dark"]
 // The cap at 4 deep nestings is enough for the current tree
 // (Overview > Infra > HAOS > Label Based Features > children) and falls
 // back gracefully if we ever go deeper.
+//
+// Level 1 and 2 links are green; the active/selected item is orange.
+
+.aside_inner .aside_inner
+  .section_title a
+    color: #4caf50
+  > section > .section_link a
+    color: #4caf50
+
+.aside_inner .aside_inner .aside_inner
+  .section_title a
+    color: #4caf50
+  > section > .section_link a
+    color: #4caf50
+
+// Active (selected) item overrides to orange at all depths.
+.aside_inner .aside_inner .section_title.active a,
+.aside_inner .aside_inner .section_link.active a
+  color: #ff9800 !important
 
 // Each depth tunes all three text elements that can appear at that
 // level:
@@ -167,21 +186,23 @@ html[data-mode="dark"]
 // nested .aside_inner child (i.e. it's a section with sub-sections), then
 // toggles the `collapsed` class on click of its .section_title.
 //
-// We render a small chevron via CSS that flips when collapsed.
+// We render a chevron on the right side via a ::after pseudo-element that
+// flips when collapsed.
 .aside_inner.collapsible > .section_title
   cursor: pointer
   position: relative
   user-select: none
-  &::before
+  &::after
     content: "▾"
     display: inline-block
-    font-size: 0.75em
-    width: 1em
-    margin-right: 0.25em
+    font-size: 1.25em
+    position: absolute
+    right: 0
+    top: 0.05em
     transition: transform 0.15s ease-out
     transform: translateY(-0.1em)
 
-.aside_inner.collapsible.collapsed > .section_title::before
+.aside_inner.collapsible.collapsed > .section_title::after
   transform: rotate(-90deg) translateX(0.1em)
 
 .aside_inner.collapsible.collapsed > section
@@ -379,6 +400,10 @@ html[data-mode="dark"]
   > nav > ul,
   > ul
     padding-left: 0
+  // Level 1 items (direct children of top-level ul) are green.
+  > nav > ul > li > a,
+  > ul > li > a
+    color: #4caf50
 
 .page-toc__title
   font-weight: 600
