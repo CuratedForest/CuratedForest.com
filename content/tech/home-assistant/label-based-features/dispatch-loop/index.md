@@ -560,7 +560,7 @@ Before any gate evaluation runs, the script applies a **two-branch re-trigger pr
 
 - **Branch A — stepping interaction in progress (Volume Up/Down hold, Lights Up/Down hold).** The user is actively dialing the volume (or brightness). The hold loop inside `labeled_feature_generics` is writing `media_player.volume_set` against the same player every 300ms. If we restored to the snapshotted "original" we'd race those writes and the volume would bounce. Instead we **re-baseline the snapshot** to whatever `volume_level` currently reads — the user's new "original" is wherever they're dialing to. Subsequent cancel-restore paths (Night-off, Media-off) then correctly restore to this new baseline, not the pre-hold value. One-tick-behind is fine — the user's net interaction (start → hold → release) re-baselines at both press-start and press-release events, so the release dispatch always carries the final committed value.
 
-- **Branch B — discrete event (button short press, Night flip, Media Playing flip).** Restore the snapshotted volume, clear the snapshot, and fall through to the gate. This is the "reset the timer" / "cancel the timer" semantic, depending on what the gate then evaluates to.
+- **Branch B — discrete event (button short press, Night flip, Media Playing flip).** Restore the snapshotted volume and fall through to the gate, **keeping** the snapshot as the baseline — no clear, and no `volume_level` re-read. Re-reading immediately after the restore would race the integration's state echo (lnxlink / MQTT players can lag seconds behind a `volume_set`) and could capture the still-halved / still-muted level as the new "original", progressively corrupting the baseline toward 0 on every reset press. This is the "reset the timer" / "cancel the timer" semantic, depending on what the gate then evaluates to: gate true → Step 4 is a no-op and the fade re-arms at the true original baseline; gate false → Step 3 restores again (idempotent) and clears the snapshot.
 
 The classifier is `_is_stepping`, evaluated against the **triggering leader's current state**:
 
@@ -574,28 +574,33 @@ After whichever branch ran (or neither, if there was no snapshot in flight), the
 
 Then the gate decides what happens next:
 
-- `should_run == true` → snapshot the media player's current volume (only if the prelude didn't just clear one), then run the fade sequence:
+- `should_run == true` → snapshot the media player's current volume (only if the current target isn't baselined yet — a mid-fade reset keeps the existing baseline; if the Media Playing `triggering_leader` changed mid-fade, the new player's current volume is *merged* into the baseline so the old player's entry still restores on cancel), then run the fade sequence:
   1. Wait `sleep_timeout_minutes` (default 15)
   2. Halve the volume
   3. Wait 1 minute
   4. "Mute" via `volume_set: 0` (see **Mute via volume_set: 0** below)
   5. Wait 1 minute
   6. Seek back 30 s every 0.5 s × 20 iterations (≈ 10 s) — keeps the playback position "live" during the silent hold; **silently falls back to `media_player.media_previous_track`** when the target's `supported_features` doesn't include `SUPPORT_SEEK` (bit `0x02`) — same pattern as `Media Seek Back` in `labeled_feature_generics`
-  7. **Pause the player** via `media_player.media_pause` — by this point we've seek-back'd well into the past, and the gate has remained `true` for the full timeout window, so the desired end-state is *silent and paused*, not silent-then-resume-mid-show
-  8. Restore the snapshot's volume on the paused player (this also "unmutes" — the previous `volume_set: 0` is naturally undone by the restore, so the next manual play resumes at the right level)
-  9. Clear the snapshot
-- `should_run == false` → cancel-restore. Idempotent — the prelude already cleared the snapshot if there was one, so this branch typically runs as a no-op, then stops.
+  7. Restore the snapshot's volume (pre-pause) — lands while the player is still in its playing state, which several integrations (Music Assistant, Squeezebox, lnxlink, some MQTT players) require for the write to commit; this also "unmutes" (the `volume_set: 0` is undone here)
+  8. **Pause the player** via `media_player.media_pause`, guarded — skipped when the target doesn't advertise `SUPPORT_PAUSE` (bit `0x01`); after the call the script waits up to 5 s for the state to land in `paused` / `idle` / `off` / `standby`. When pause is unsupported or the verification fails, the failure is routed through the script's `error_mode` and the optional `pause_fallback` entity is dispatched (`button.*` → `button.press`, `script.*` → `script.turn_on`; never a toggle — a toggle would resume an already-paused player). By this point we've seek-back'd well into the past, and the gate has remained `true` for the full timeout window, so the desired end-state is *silent and paused*, not silent-then-resume-mid-show
+  9. Restore the snapshot's volume again (post-pause) — belt-and-suspenders so the end state is the original level regardless of which player state the integration accepts volume writes in; a harmless no-op where a paused player rejects `volume_set`
+  10. Clear the snapshot
+- `should_run == false` → cancel-restore. Restores the snapshot again if one survived the prelude (idempotent — Branch B already restored), clears the snapshot, then stops.
+
+#### Screen-off piggyback (Step 1c)
+
+When the dispatching leader's most recent event matches the `screen_off_event` field (default `1_short_release`, case-insensitive — read from `sensor.labeled_features_state.leaders[<eid>].current_value`, so it works on event-domain button entities) **and** the Night gate passes, the script additionally dispatches `feature: <screen_off_feature>` (default `Screen`) through `script.labeled_feature_generics` with `leader_enabled: false` / `toggle: false`, forcing every `(Area )Follower: Screen` entity in the scope into its disable path. This runs *alongside* (not instead of) the normal arm/cancel/restore flow — no `stop:` — so a Night-mode short-press both arms the sleep timer and turns the area's screens off. Set `screen_off_event` to `''` to disable the branch entirely. The dispatch goes direct through generics rather than `Set Feature` so repeat presses fire every time — the manual-override path would no-op once the entry is already `enabled: false`.
 
 #### How re-trigger semantics work per entry point
 
 The prelude + gate combination handles every cancellation and arming case. Walking through the cases:
 
-- **Sleep Timer button short-press (mid-fade)** — Trigger state is `*_short_release` → not stepping → Branch B: restore + clear. Gate evaluates `Night AND Media Playing` — both still true (audio still playing, Night still on) → arm a fresh 15-minute timer at the restored full volume. The button becomes the natural "reset the timer" gesture.
+- **Sleep Timer button short-press (mid-fade)** — Trigger state is `*_short_release` → not stepping → Branch B: restore (snapshot kept as the baseline). Gate evaluates `Night AND Media Playing` — both still true (audio still playing, Night still on) → arm a fresh 15-minute timer at the true original volume. The button becomes the natural "reset the timer" gesture.
 - **Sleep Timer button press (nothing armed yet)** — Prelude both branches skip (snapshot empty). Gate evaluates; arms a fade if both gate features are true.
 - **Volume Up button held (mid-fade)** — Trigger state is `*_long_press` → stepping → Branch A: re-baseline snapshot to current volume. Snapshot now tracks what the user is dialing to (one tick behind). 15-min delay restarts in Step 5. Volume Up's own hold loop continues writing volume_set unimpeded — no race.
 - **Volume Up button just released (mid-fade)** — Trigger state is `*_long_release` → stepping → Branch A: re-baseline snapshot to the volume the user settled on. This is the dispatch that "commits" the new baseline.
-- **Night-off mid-fade** — Trigger state is `off` (or `Day`, from `input_select.house_mode`) → not stepping → Branch B: restore + clear. Gate evaluates `false AND true = false` → Step 3 cancel-restore (no-op, snapshot already cleared), stops. Volume restored, timer cancelled.
-- **Media Playing → false mid-fade (pause / stop)** — Trigger state is `paused`/`idle`/etc → not stepping → Branch B: restore + clear. Gate evaluates false → cancel-restore no-op, stops.
+- **Night-off mid-fade** — Trigger state is `off` (or `Day`, from `input_select.house_mode`) → not stepping → Branch B: restore (snapshot kept). Gate evaluates `false AND true = false` → Step 3 cancel-restore (restore is an idempotent no-op after Branch B) + clear, stops. Volume restored, timer cancelled.
+- **Media Playing → false mid-fade (pause / stop)** — Trigger state is `paused`/`idle`/etc → not stepping → Branch B: restore (snapshot kept). Gate evaluates false → Step 3 cancel-restore (idempotent no-op) + clear, stops.
 - **Media Playing → true (fresh arm via the bedroom speaker turning on)** — Prelude both branches skip (no snapshot yet). Gate evaluates `Night AND true = true` → arm. **This is the primary arming path for the bedroom use case**: the button's other follower turns on the media player, the media player going `off → playing` flips `Media Playing.enabled` false → true, the leader automation dispatches this script via the Media Playing follower wiring, and the gate arms the fade. The user doesn't have to press the Sleep Timer button directly.
 - **Play resumed after a Night-off cancel** — Prelude branches skip (Night-off already cleared the snapshot). Gate evaluates `false AND true = false` → no-op cancel-restore, stops. Timer does **not** re-arm. The gate is what protects this case; no separate guard is required.
 
@@ -606,7 +611,7 @@ The script doesn't use `media_player.volume_mute` anywhere. Instead, the "mute" 
 
 Why: some `media_player` integrations (notably some MQTT players and `lnxlink` in certain configs) advertise `SUPPORT_VOLUME_MUTE` via `supported_features` but the underlying device rejects the call at runtime. Rather than capability-checking the bitmask (which can lie), the script sidesteps the question entirely. `volume_set` works on every integration.
 
-The audible result is identical to a real mute: silent during the seek-back hold, restored at the original level on completion. There is no separate "unmute" step in the fade sequence — it's collapsed into the final restore. (Step 7 also dispatches `media_player.media_pause` immediately before the volume restore, so when the user comes back the next morning the player is sitting paused at the original volume rather than mid-track at the volume the fade halved down to.)
+The audible result is identical to a real mute: silent during the seek-back hold, restored at the original level on completion. There is no separate "unmute" step in the fade sequence — it's collapsed into the restores. (The fade also pauses the player between the two restores — steps 7–9 above — so when the user comes back the next morning the player is sitting paused at the original volume rather than mid-track at the volume the fade halved down to.)
 
 #### Seek-back loop tick rate
 The seek-back loop runs **20 iterations at 0.5 s cadence**, with each iteration seeking back 30 s. That's a very tight ~10 s total hold (down from the original 10-minute version), but the rapid back-step keeps the player's cursor pinned well in the past so any auto-advance to the next track or end-of-queue during the silent step is undone before it can take effect.
@@ -626,7 +631,10 @@ Seek calls match the `Media Seek Back` pattern in `labeled_feature_generics`:
 | `sleep_timeout_minutes` | no | `15` | Wait before the fade begins. |
 | `scope`, `scope_id` | no | `area` / — | Pass-through from the dispatch loop. Used to key the sensor lookup. |
 | `leader_enabled`, `leader_entity_id`, `follower_entity_id`, `feature`, `leader_feature`, `toggle` | no | — | Standard pass-through. `leader_enabled` and `toggle` are intentionally ignored. |
-| `error_mode` | no | `log` | `silent / log / alert / stop`. Used for the "couldn't resolve media_player" guard. |
+| `error_mode` | no | `log` | `silent / log / alert / stop`. Used for the "couldn't resolve media_player" guard and the pause-verification failure. |
+| `pause_fallback` | no | `''` | Entity dispatched when the target doesn't advertise `SUPPORT_PAUSE` or the post-pause state verification fails (e.g. lnxlink-style players). `button.*` → `button.press`, `script.*` → `script.turn_on`; never a toggle. Empty = only surface via `error_mode`. |
+| `screen_off_event` | no | `1_short_release` | Button event name that triggers the Step 1c screen-off dispatch when the Night gate passes. Empty string disables Step 1c. |
+| `screen_off_feature` | no | `Screen` | Feature name dispatched by the Step 1c screen-off path. |
 
 #### Required label wiring (minimal — zero Args)
 
