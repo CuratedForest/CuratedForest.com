@@ -85,10 +85,14 @@ A decision table so you can jump straight to the right file.
   - `drafts` — lists links to all draft pages ordered by Lastmod desc.
     Only renders content in `-D` builds; used by `content/drafts.md`
     (itself `draft: true`, so it never publishes to prod).
+  - `recent` — lists links to all non-draft pages ordered by Lastmod desc
+    (git-derived via `enableGitInfo`); used by `content/recent.md`.
 - **Draft deployment (curatedforest.farm):** a second Netlify deploy builds
   with drafts enabled. Sidebar links to draft pages get a `.draft` class in
-  `layouts/_partials/sidebar.html` and render cyan (`#0bc2f4`) via a rule in
-  `_custom.sass` (kept below the `.active` orange rule in specificity).
+  `layouts/_partials/sidebar.html` and render cyan (`#0bc2f4`) via an
+  `!important` rule in `_custom.sass` (the `.active` orange rule still wins
+  via higher class specificity). Links inside the `drafts` shortcode list
+  are painted the same cyan via `.draft-list a`.
 - **Drafts:** Netlify runs plain `hugo` (no `-D`), so `draft: true` pages
   will not publish. Remove the flag when a page is ready to go live.
 

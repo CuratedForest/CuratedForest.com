@@ -1,0 +1,19 @@
+{{/*
+  recent shortcode
+
+  Lists links to every published (non-draft) page on the site, ordered by
+  last modified date (newest first). .Lastmod comes from git history via
+  enableGitInfo. Used by content/recent.md; excludes itself from the list.
+*/}}
+{{- $page := .Page }}
+{{- $pages := where site.RegularPages "Draft" "ne" true }}
+<ul class="recent-list">
+  {{- range sort $pages "Lastmod" "desc" }}
+  {{- if ne .RelPermalink $page.RelPermalink }}
+  <li>
+    <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+    <time datetime="{{ .Lastmod.Format "2006-01-02" }}">— {{ .Lastmod.Format "Jan 2, 2006" }}</time>
+  </li>
+  {{- end }}
+  {{- end }}
+</ul>

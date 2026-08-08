@@ -144,12 +144,19 @@ html[data-mode="dark"]
   color: #ff9800 !important
 
 // Draft pages (only present in -D builds, e.g. curatedforest.farm) get a
-// cyan link so they're visually distinct in the sidebar. Lower
-// specificity than the .active rules above, so an active draft still
-// reads orange.
+// cyan link so they're visually distinct in the sidebar. !important is
+// needed to beat the tiered green selectors above (which win on element
+// count otherwise); the .active orange rule also uses !important with
+// higher class specificity, so an active draft still reads orange.
 .aside .section_title.draft a,
 .aside .section_link.draft a
-  color: #0bc2f4
+  color: #0bc2f4 !important
+
+// Links inside the drafts listing page (layouts/_shortcodes/drafts.html)
+// are all drafts by definition; paint them the same cyan. !important to
+// override the theme's .content a green.
+.draft-list a
+  color: #0bc2f4 !important
 
 // Each depth tunes all three text elements that can appear at that
 // level:
