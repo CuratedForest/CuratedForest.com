@@ -6,7 +6,9 @@
 //          green, since drafts are "adjacent" to published content
 //   orange hsl(25, 80%, 55%)  #E87D30 — active/selected; second leg of
 //          the green–orange–violet triad (violet unused)
-:root
+// NOTE: ":root" can't be used in indented .sass — a leading colon is
+// parsed as legacy property syntax. "html" selects the same element.
+html
   --theme: #42D773
 
 // The theme sets its own --theme under html[data-mode="dark"] (specificity
