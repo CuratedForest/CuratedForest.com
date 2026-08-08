@@ -1,3 +1,10 @@
+---
+title: Alerting
+weight: 2
+type: docs
+draft: true
+---
+
 ## Todo
 
 Split alerting into own handler?

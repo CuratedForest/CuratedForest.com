@@ -1,3 +1,10 @@
+---
+title: Other Automations
+weight: 3
+type: docs
+draft: true
+---
+
 ## Boards / Wekan
 
 Card management

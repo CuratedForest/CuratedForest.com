@@ -1,9 +1,10 @@
 ---
 title: TimescaleDB
-weight: 5
+weight: 3
 type: docs
 aliases:
   - /tech/timescaledb/
+  - /software/timescaledb/
 ---
 
 TimescaleDB extends PostgreSQL with time-series superpowers and stores

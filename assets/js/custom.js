@@ -75,12 +75,13 @@
       // through "Label Based Features" by default; deeper levels start
       // collapsed so the tree doesn't explode on first load.
       if (depth >= 4) group.classList.add('collapsed');
-      // Special-case: children of the /software/ section (ESPHome,
-      // Kopia Backups, Grafana, TimescaleDB, Kubernetes, ...) also
-      // start collapsed. Software is a shallow catalog — each entry
-      // has its own sub-pages we don't want unfurled on every page
-      // load. Detect membership by walking up the .aside_inner chain
-      // looking for a title link that points at /software/.
+      // Special-case: children of the /software/ section (the Farm,
+      // Shared, and Productivity subsections, Software Picks, and
+      // everything below them) also start collapsed. Software Stacks
+      // is a catalog — each subsection holds tool pages with their own
+      // sub-pages we don't want unfurled on every page load. Detect
+      // membership by walking up the .aside_inner chain looking for a
+      // title link that points at /software/.
       var ancestor = group.parentElement && group.parentElement.closest('.aside_inner');
       while (ancestor) {
         var link = ancestor.querySelector(':scope > .section_title > a');

@@ -17,7 +17,7 @@ The operational habits that keep a self-hosted stack healthy over time.
 ## Reliability
 
 - **Back up before you need it.** Snapshots are encrypted, deduplicated, and
-  pushed off-site (see [Kopia Backups](/software/kopia-backups/)).
+  pushed off-site (see [Kopia Backups](/software/shared/kopia-backups/)).
 - **Test restores.** A backup you've never restored is a hope, not a plan.
 - **Pin versions.** Reproducible builds beat "latest" surprises.
 

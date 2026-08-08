@@ -44,7 +44,7 @@ data comes back.
 ## Tooling
 
 The concrete tool used for filesystem-level backups is
-[Kopia](/software/kopia-backups/) — encrypted, deduplicated snapshots
+[Kopia](/software/shared/kopia-backups/) — encrypted, deduplicated snapshots
 pushed to S3-compatible off-site storage. Application-level backups
 (database dumps, config exports) run on their own schedules and land in
 the same Kopia repository so they inherit the same retention and

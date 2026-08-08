@@ -1,10 +1,11 @@
 ---
 title: Immich
-weight: 7
+weight: 2
 type: docs
 draft: true
 aliases:
   - /tech/immich/
+  - /software/immich/
 ---
 
 restore from backup

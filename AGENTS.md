@@ -166,7 +166,8 @@ this repo — no theme override to worry about.
 sections. The rules it hard-codes:
 
 - Depths ≥ 4 auto-collapse on load.
-- Children of `/software/` auto-collapse (it's a shallow catalog).
+- Children of `/software/` auto-collapse (it's a catalog: the Farm,
+  Shared, and Productivity subsections hold the tool pages).
 - The active page's ancestor `.aside_inner` chain is force-expanded and
   each ancestor `.section_title` gets `.active` (so the whole breadcrumb
   lights up orange — the sidebar's active color, see the color rules at
