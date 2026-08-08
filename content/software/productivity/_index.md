@@ -2,6 +2,7 @@
 title: Productivity
 weight: 4
 type: docs
+draft: true
 autoshrink: true
 ---
 
