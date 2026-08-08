@@ -1,3 +1,20 @@
+// Harmonized accent palette (color-theory pass, Aug 2026). All three
+// accents share ~55% lightness and moderate saturation so none shouts
+// next to the others:
+//   green  hsl(140, 65%, 55%) #42D773 — primary links (theme var)
+//   cyan   hsl(185, 65%, 55%) #42CAD7 — drafts; analogous neighbor of
+//          green, since drafts are "adjacent" to published content
+//   orange hsl(25, 80%, 55%)  #E87D30 — active/selected; second leg of
+//          the green–orange–violet triad (violet unused)
+:root
+  --theme: #42D773
+
+// The theme sets its own --theme under html[data-mode="dark"] (specificity
+// 0,1,1), which beats :root above — and this site forces dark mode — so
+// the override must live under the same selector to take effect.
+html[data-mode="dark"]
+  --theme: #42D773
+
 // Site-wide background image.
 // The compose theme caps <body> at max-width: 1440px (1600px at very wide
 // viewports) and centers it, so a background on <body> would not fill the
@@ -146,7 +163,7 @@ html[data-mode="dark"]
 .aside > .aside_inner > section > .section_link.active a,
 .aside_inner .aside_inner .section_title.active a,
 .aside_inner .aside_inner .section_link.active a
-  color: #ff9800 !important
+  color: #E87D30 !important
 
 // Draft pages (only present in -D builds, e.g. curatedforest.farm) get a
 // cyan link so they're visually distinct in the sidebar. !important is
@@ -155,13 +172,13 @@ html[data-mode="dark"]
 // higher class specificity, so an active draft still reads orange.
 .aside .section_title.draft a,
 .aside .section_link.draft a
-  color: #0bc2f4 !important
+  color: #42CAD7 !important
 
 // Links inside the drafts listing page (layouts/_shortcodes/drafts.html)
 // are all drafts by definition; paint them the same cyan. !important to
 // override the theme's .content a green.
 .draft-list a
-  color: #0bc2f4 !important
+  color: #42CAD7 !important
 
 // Each depth tunes all three text elements that can appear at that
 // level:
