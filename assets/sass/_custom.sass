@@ -491,14 +491,22 @@ html[data-mode="dark"]
 
 // --- Nav breadcrumb -------------------------------------------------------
 // 1-level breadcrumb rendered by nav.html in the empty middle of the top
-// nav: "<page or top section> | The Curated Forest". Site half uses the
-// harmonized green, current-page half stays plain text color, separator
-// muted. The theme's nav grid is `10rem 1fr` (brand | body); we widen it
-// to three columns and pin each child explicitly so the breadcrumb
-// doesn't push .nav_body into an implicit column.
+// nav: "<page or top section> | The Curated Forest". Styled like the page
+// <h1> it replaces, on the standard blurred translucent panel.
+//
+// Alignment: the content grid (.main .grid-auto) is `2fr 5fr` with a
+// 2rem gap inside .wrap's 25px padding. The theme's nav uses unrelated
+// geometry (padding 1.5rem, columns `10rem 1fr`, 1rem gap), so the
+// breadcrumb's left edge drifted away from the content block's left
+// edge. Mirror the content grid exactly: same 25px padding, same 2rem
+// column gap, and a first column of (100% - 2rem) * 2/7 — i.e. the
+// sidebar's width — so the breadcrumb panel starts at the same x as the
+// content block on every page.
 @media (min-width: 992px)
   .nav
-    grid-template-columns: 10rem 1fr auto
+    padding: 0 25px !important
+    grid-template-columns: calc((100% - 2rem) * 0.285714) 1fr auto
+    grid-gap: 1rem 2rem
   .nav_breadcrumb
     grid-column: 2
   .nav_body
@@ -506,9 +514,8 @@ html[data-mode="dark"]
 
 .nav_breadcrumb
   // Fill the middle nav column so the panel extends right up to the
-  // search/controls panel (the nav's 1rem grid-gap provides the gutters
-  // on both sides), instead of shrinking to fit the text and floating
-  // centered.
+  // search/controls panel, instead of shrinking to fit the text and
+  // floating centered.
   justify-self: stretch
   white-space: nowrap
   overflow: hidden

@@ -112,8 +112,10 @@ the top nav (`.nav_breadcrumb` in `_custom.sass`):
   visible `<h1>` on the home page and top-level pages/sections
   (`and .Parent (not .Parent.IsHome)`); deeper pages keep their `<h1>`
   since the breadcrumb only names the top section.
-- The nav grid is widened to `10rem 1fr auto` at ≥992px with explicit
-  `grid-column` pins; breadcrumb hidden below 992px (drawer nav).
+- The nav grid is re-proportioned at ≥992px to mirror the content grid
+  (`calc((100% - 2rem) * 0.285714) 1fr auto`, 25px padding, 2rem column
+  gap) so the breadcrumb's left edge aligns with the content block's;
+  breadcrumb hidden below 992px (drawer nav).
 
 ---
 
