@@ -1,5 +1,8 @@
 [
-  "templater-obsidian",
-  "obsidian-shellcommands",
-  "vim-toggle"
+  "breadcrumbs",
+  "floating-toc",
+  "obsidian-relative-line-numbers",
+  "attachment-management",
+  "folder-notes",
+  "novel-word-count"
 ]
