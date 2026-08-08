@@ -90,7 +90,7 @@ A decision table so you can jump straight to the right file.
     showing the note text, ordered by Lastmod desc; used by
     `content/search/todo.md` (also `draft: true`).
   - `recent` — lists links to all non-draft pages ordered by Lastmod desc
-    (git-derived via `enableGitInfo`); used by `content/recent.md`.
+    (git-derived via `enableGitInfo`); used by `content/search/recent.md`.
 - **Draft deployment (curatedforest.farm):** a second Netlify deploy builds
   with drafts enabled. Sidebar links to draft pages get a `.draft` class in
   `layouts/_partials/sidebar.html` and render cyan (`#42CAD7`) via an
