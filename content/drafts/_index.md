@@ -4,6 +4,6 @@ weight: 2
 draft: true
 ---
 
-All current draft pages, newest edits first. Only visible in draft builds (curatedforest.farm).
+All current draft pages, newest edits first. Only visible in draft builds.
 
 {{< drafts >}}

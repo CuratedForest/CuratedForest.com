@@ -1,7 +1,7 @@
 ---
 title: Resources
 type: docs
-weight: 3
+weight: 90
 autoshrink: true
 draft: true
 ---
