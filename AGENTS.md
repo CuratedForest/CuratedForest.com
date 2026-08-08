@@ -98,6 +98,25 @@ A decision table so you can jump straight to the right file.
 
 ---
 
+## Nav breadcrumb
+
+`layouts/_partials/nav.html` renders a 1-level breadcrumb in the middle of
+the top nav (`.nav_breadcrumb` in `_custom.sass`):
+
+- Home: `The Curated Forest`; top-level page/section:
+  `<Title> | The Curated Forest`; deeper pages: `<top section> | The
+  Curated Forest` (uses `.FirstSection`).
+- Styled to match the page `<h1>` it replaces (200%, weight 500,
+  `--text`) on the standard blurred translucent panel.
+- Because it shows the title, `layouts/_partials/document.html` skips the
+  visible `<h1>` on the home page and top-level pages/sections
+  (`and .Parent (not .Parent.IsHome)`); deeper pages keep their `<h1>`
+  since the breadcrumb only names the top section.
+- The nav grid is widened to `10rem 1fr auto` at ≥992px with explicit
+  `grid-column` pins; breadcrumb hidden below 992px (drawer nav).
+
+---
+
 ## The per-page Table of Contents
 
 `layouts/_partials/document.html` renders a single unified TOC on every

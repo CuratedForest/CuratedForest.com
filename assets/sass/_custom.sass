@@ -506,19 +506,26 @@ html[data-mode="dark"]
 
 .nav_breadcrumb
   justify-self: center
-  font-size: 0.95rem
   white-space: nowrap
   overflow: hidden
   text-overflow: ellipsis
+  // Match the page <h1> it replaces (theme h1: 200%, weight 500, inherits
+  // the near-white --text), on the same blurred translucent panel as the
+  // nav controls / sidebar / content surfaces.
+  font-size: 200%
+  font-weight: 500
+  color: var(--text)
+  background-color: rgba(20, 20, 22, 0.55)
+  backdrop-filter: blur(6px)
+  -webkit-backdrop-filter: blur(6px)
+  border-radius: 0.5rem
+  padding: 0.15rem 1rem
 
 .nav_breadcrumb a
   color: inherit
 
-.nav_breadcrumb_site
-  color: var(--theme)
-
 .nav_breadcrumb_sep
-  margin: 0 0.5rem
+  margin: 0 0.75rem
   opacity: 0.5
 
 // Below the theme's 992px nav breakpoint, .nav_body becomes a slide-in
