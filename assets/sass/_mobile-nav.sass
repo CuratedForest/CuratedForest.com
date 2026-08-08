@@ -3,15 +3,16 @@
 //   1. .nav_toggle (top-right, "harmburger" sprite) — opens the slide-out
 //      .nav_body panel whose first item is the search field. Confusing,
 //      because it *looks* like a menu but is really how you reach search.
-//   2. .aside_toggle ("Docs Menu" bar with the "carly" icon on the right) —
-//      expands the docs sidebar tree.
+//   2. .aside_toggle ("Main Menu" bar with the "carly" icon on the right) —
+//      expands the docs sidebar tree. (The label was "Docs Menu" upstream;
+//      sidebar.html overrides it to "Main Menu".)
 //
 // Fix, mobile only (<992px, the theme's own nav breakpoint):
 //   * Hide the .nav_toggle hamburger entirely and instead render the
 //     .nav_body inline in the header — there is enough room next to the
 //     logo for the search bar. The site menu links (Technology / Plants /
 //     AI Usage) flow underneath the search field inside the same panel.
-//   * Left-align the "Docs Menu" toggle's icon by putting it before the
+//   * Left-align the "Main Menu" toggle's icon by putting it before the
 //     label text (flex-direction row-reverse + justify-content flex-end),
 //     so the docs-menu affordance reads from the left edge instead of
 //     mirroring the old top-right hamburger.
@@ -61,8 +62,13 @@
     > .nav-item .nav-link
       padding: 0.25rem 0.75rem
 
-// 3) "Docs Menu" toggle: icon on the left, text next to it.
+// 3) "Main Menu" toggle: icon on the left, text next to it. The theme
+//    pulls the toggle up with translateY(-1rem), which makes it overlap
+//    the header on mobile now that the nav body renders inline (taller
+//    header) — cancel the lift and give it its own spacing instead.
 .aside_toggle
   flex-direction: row-reverse
   justify-content: flex-end
   gap: 0.5rem
+  transform: none
+  margin-top: 0.75rem

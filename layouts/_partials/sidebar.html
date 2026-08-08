@@ -25,7 +25,7 @@
 */}}
 <aside class="aside menu">
   <div>
-    <label class="aside_toggle toggle" title='{{ T "docs_menu" }}' role="button">{{ T "docs_menu" }} {{ partial "sprite" (dict "icon" "carly") }}</label>
+    <label class="aside_toggle toggle" title="Main Menu" role="button">Main Menu {{ partial "sprite" (dict "icon" "carly") }}</label>
   </div>
   {{- template "tree" (dict "page" . "section" site.Home)  }}
   {{- define "tree" }}
