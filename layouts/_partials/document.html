@@ -27,11 +27,11 @@ Single unified TOC style (see assets/sass/_custom.sass -> .page-toc):
             </aside>
             {{- end }}
             <h1>{{ .Title }}</h1>
-            {{-/* Page timestamps: "Created" is the front-matter date
+            {{- /* Page timestamps: "Created" is the front-matter date
             (Hugo has no first-commit git date); "Updated" is .Lastmod,
             which comes from git history via enableGitInfo. Only render
             Updated when it differs from Created so untouched pages don't
-            show the same date twice. */}}
+            show the same date twice. */ -}}
             {{- if and (not .IsHome) (or (not .Date.IsZero) (not .Lastmod.IsZero)) }}
             <div class="page-dates">
               {{- if not .Date.IsZero }}
