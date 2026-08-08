@@ -1,6 +1,6 @@
 baseURL: https://CuratedForest.com/
 languageCode: en-us
-title: The Curated Forest
+title: Curated Forest
 # Populate .Lastmod (and .GitInfo) from git history so the drafts page
 # (content/drafts.md) can sort drafts by true last-modified date.
 enableGitInfo: true
