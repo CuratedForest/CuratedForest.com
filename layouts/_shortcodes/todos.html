@@ -5,7 +5,7 @@
   edits first. The todo value is rendered through markdownify, so both
   single-line strings and multi-line markdown bullet lists (written as a
   YAML block scalar, `todo: |-`) come out as proper markup. Used by
-  content/drafts/todo.md, which is itself a draft and only exists in -D
+  content/search/todo.md, which is itself a draft and only exists in -D
   builds (curatedforest.farm).
 */}}
 {{- $pages := where site.RegularPages "Params.todo" "!=" nil }}

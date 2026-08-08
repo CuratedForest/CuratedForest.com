@@ -83,11 +83,12 @@ A decision table so you can jump straight to the right file.
     Use this for any multi-image display so the styling stays consistent.
   - `examples`, `all-examples` — used by the label-based-features docs.
   - `drafts` — lists links to all draft pages ordered by Lastmod desc.
-    Only renders content in `-D` builds; used by `content/drafts/_index.md`
-    (itself `draft: true`, so it never publishes to prod).
+    Only renders content in `-D` builds; used by
+    `content/search/drafts.md` (itself `draft: true`, so it never
+    publishes to prod).
   - `todos` — lists links to all pages with a `todo:` front-matter entry,
     showing the note text, ordered by Lastmod desc; used by
-    `content/drafts/todo.md` (also `draft: true`).
+    `content/search/todo.md` (also `draft: true`).
   - `recent` — lists links to all non-draft pages ordered by Lastmod desc
     (git-derived via `enableGitInfo`); used by `content/recent.md`.
 - **Draft deployment (curatedforest.farm):** a second Netlify deploy builds
