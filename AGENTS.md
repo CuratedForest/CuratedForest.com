@@ -166,8 +166,12 @@ this repo — no theme override to worry about.
 sections. The rules it hard-codes:
 
 - Depths ≥ 4 auto-collapse on load.
-- Children of `/software/` auto-collapse (it's a catalog: the Farm,
-  Shared, and Productivity subsections hold the tool pages).
+- Sections with `autoshrink: true` in their `_index.md` front matter
+  auto-collapse at any depth (currently Kubernetes, Running Software,
+  and the Shared and Productivity stacks under Software Stacks). The
+  partial renders an `.autoshrink` class on the section's `.aside_inner`;
+  `custom.js` adds `.collapsed` when it sees it. Only the marked group
+  itself shrinks — descendants follow their own depth/flag rules.
 - The active page's ancestor `.aside_inner` chain is force-expanded and
   each ancestor `.section_title` gets `.active` (so the whole breadcrumb
   lights up orange — the sidebar's active color, see the color rules at
@@ -183,10 +187,10 @@ anchored at `.aside` on purpose — descendant selectors like
 `.aside_inner .aside_inner` match every level below the root and leak
 green into tier 3+.
 
-**If you rename `/software/`, restructure the tree deeper than 4 levels,
-or change the number of top-level sections, revisit both:**
+**If you restructure the tree deeper than 4 levels or change the number
+of top-level sections, revisit both:**
 
-1. `assets/js/custom.js` (depth thresholds, `/software/` regex).
+1. `assets/js/custom.js` (depth thresholds).
 2. `assets/sass/_custom.sass` — the `.aside_inner .aside_inner …` depth
    blocks only handle up to 4 nested levels; add another block for level 5.
 

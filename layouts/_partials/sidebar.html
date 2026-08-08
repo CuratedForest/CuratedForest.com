@@ -32,7 +32,7 @@
   {{- $section := .section }}
   {{- $page := .page }}
   {{- $permalink := $page.RelPermalink }}
-  <section class="section aside_inner">
+  <section class="section aside_inner{{ if $section.Params.autoshrink }} autoshrink{{ end }}">
     <h2 class="section_title{{ if eq $section.RelPermalink $permalink }} active{{ end }}{{ if $section.Draft }} draft{{ end }}"><a  href="{{ $section.Permalink }}" class="group">{{ $section.Title }}</a></h2>
       {{- $pages := $section.Pages }}
       {{- with $pages }}

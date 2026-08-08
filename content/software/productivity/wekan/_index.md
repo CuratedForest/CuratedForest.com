@@ -3,8 +3,6 @@ title: Wekan
 weight: 1
 type: docs
 draft: true
-aliases:
-  - /software/wekan/
 ---
 
 For the MongoDB information, checkout [Mongo DB](Mongo%20DB.md)

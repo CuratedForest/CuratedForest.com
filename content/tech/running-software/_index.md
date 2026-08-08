@@ -2,6 +2,7 @@
 title: Running Software
 type: docs
 weight: 1
+autoshrink: true
 ---
 
 

@@ -5,7 +5,6 @@ type: docs
 draft: true
 aliases:
   - /tech/immich/
-  - /software/immich/
 ---
 
 restore from backup

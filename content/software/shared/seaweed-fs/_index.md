@@ -5,7 +5,6 @@ type: docs
 draft: true
 aliases:
   - /tech/seaweed-fs/
-  - /software/seaweed-fs/
 ---
 
 Can copy and paste this into host to fix corrupted idx files.

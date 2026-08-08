@@ -21,6 +21,9 @@
 //        first three child levels start expanded so the reader can
 //        always see down through and including the "Label Based
 //        Features" children before having to click anything.
+//      * Sections with `autoshrink: true` in their _index.md front
+//        matter also start collapsed, at any depth (rendered as an
+//        .autoshrink class by layouts/_partials/sidebar.html).
 //      * The ancestor chain of the active page is always expanded so
 //        deep pages land with their location in context.
 //
@@ -75,22 +78,13 @@
       // through "Label Based Features" by default; deeper levels start
       // collapsed so the tree doesn't explode on first load.
       if (depth >= 4) group.classList.add('collapsed');
-      // Special-case: children of the /software/ section (the Farm,
-      // Shared, and Productivity subsections, Software Picks, and
-      // everything below them) also start collapsed. Software Stacks
-      // is a catalog — each subsection holds tool pages with their own
-      // sub-pages we don't want unfurled on every page load. Detect
-      // membership by walking up the .aside_inner chain looking for a
-      // title link that points at /software/.
-      var ancestor = group.parentElement && group.parentElement.closest('.aside_inner');
-      while (ancestor) {
-        var link = ancestor.querySelector(':scope > .section_title > a');
-        var href = link && link.getAttribute('href');
-        if (href && /\/software\/?$/.test(href)) {
-          group.classList.add('collapsed');
-          break;
-        }
-        ancestor = ancestor.parentElement && ancestor.parentElement.closest('.aside_inner');
+      // Frontmatter flag: sections with `autoshrink: true` in their
+      // _index.md render with an .autoshrink class on their
+      // .aside_inner (see layouts/_partials/sidebar.html) and start
+      // collapsed. Only the marked group itself shrinks — descendants
+      // follow their own depth/flag rules once it's expanded.
+      if (group.classList.contains('autoshrink')) {
+        group.classList.add('collapsed');
       }
       var title = group.querySelector(':scope > .section_title');
       if (!title) return;

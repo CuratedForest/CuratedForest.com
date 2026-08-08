@@ -3,8 +3,6 @@ title: Karakeep
 weight: 3
 type: docs
 draft: true
-aliases:
-  - /software/karakeep/
 ---
 
 ## Bookmark tagging instructions
