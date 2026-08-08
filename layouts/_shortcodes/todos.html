@@ -1,0 +1,18 @@
+{{/*
+  todos shortcode
+
+  Lists every page that has a `todo:` entry in its front matter, showing
+  the todo text next to the link. Ordered by last modified date (newest
+  first), matching the drafts/recent lists. Used by
+  content/drafts/todo.md, which is itself a draft and only exists in -D
+  builds (curatedforest.farm).
+*/}}
+{{- $pages := where site.RegularPages "Params.todo" "!=" nil }}
+<ul class="todo-list">
+  {{- range sort $pages "Lastmod" "desc" }}
+  <li>
+    <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+    <span class="todo-list__text">— {{ .Params.todo }}</span>
+  </li>
+  {{- end }}
+</ul>

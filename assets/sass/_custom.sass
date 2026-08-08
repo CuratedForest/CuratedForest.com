@@ -31,6 +31,25 @@ html
   background-repeat: no-repeat
   background-color: var(--bg)
 
+// iOS Safari ignores `background-attachment: fixed` and sizes the canvas
+// to the full document height, so the cover image renders massively
+// zoomed-in on iPhones. The reliable workaround is a viewport-fixed
+// pseudo-element holding the background instead. The @supports query
+// targets WebKit-touch browsers (iOS Safari/Chrome/etc).
+@supports (-webkit-touch-callout: none)
+  html
+    background-image: none
+  html::before
+    content: ""
+    position: fixed
+    inset: 0
+    z-index: -1
+    background-image: url('/images/background-2.png')
+    background-size: cover
+    background-position: center center
+    background-repeat: no-repeat
+    background-color: var(--bg)
+
 body
   background-color: transparent
 
@@ -181,6 +200,11 @@ html[data-mode="dark"]
 // override the theme's .content a green.
 .draft-list a
   color: #42CAD7 !important
+
+// Todo listing (layouts/_shortcodes/todos.html): the note text after each
+// link stays muted so the links remain the scannable element.
+.todo-list__text
+  opacity: 0.7
 
 // Each depth tunes all three text elements that can appear at that
 // level:
