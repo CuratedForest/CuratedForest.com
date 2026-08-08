@@ -489,6 +489,44 @@ html[data-mode="dark"]
 .content .pager
   clear: both
 
+// --- Nav breadcrumb -------------------------------------------------------
+// 1-level breadcrumb rendered by nav.html in the empty middle of the top
+// nav: "<page or top section> | The Curated Forest". Site half uses the
+// harmonized green, current-page half stays plain text color, separator
+// muted. The theme's nav grid is `10rem 1fr` (brand | body); we widen it
+// to three columns and pin each child explicitly so the breadcrumb
+// doesn't push .nav_body into an implicit column.
+@media (min-width: 992px)
+  .nav
+    grid-template-columns: 10rem 1fr auto
+  .nav_breadcrumb
+    grid-column: 2
+  .nav_body
+    grid-column: 3
+
+.nav_breadcrumb
+  justify-self: center
+  font-size: 0.95rem
+  white-space: nowrap
+  overflow: hidden
+  text-overflow: ellipsis
+
+.nav_breadcrumb a
+  color: inherit
+
+.nav_breadcrumb_site
+  color: var(--theme)
+
+.nav_breadcrumb_sep
+  margin: 0 0.5rem
+  opacity: 0.5
+
+// Below the theme's 992px nav breakpoint, .nav_body becomes a slide-in
+// drawer and there's no middle column — hide the breadcrumb.
+@media (max-width: 991px)
+  .nav_breadcrumb
+    display: none
+
 // --- Page timestamps ------------------------------------------------------
 // Created/Updated line rendered under the <h1> by document.html. "Created"
 // is the front-matter date; "Updated" is .Lastmod (git history via

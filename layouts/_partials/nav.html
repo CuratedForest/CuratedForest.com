@@ -24,6 +24,26 @@
 {{- partial "sprite" (dict "icon" "harmburger") }}
 </div>
 </a>
+{{/*
+  1-level breadcrumb in the empty middle of the nav:
+    home            -> "The Curated Forest"
+    top-level page  -> "About Me | The Curated Forest"
+    anything deeper -> "<top section> | The Curated Forest" (e.g. "Plants | …")
+  Each part links to its page and uses site.Title ("The Curated Forest").
+*/}}
+<div class="nav_breadcrumb">
+  {{- if .IsHome }}
+  <span class="nav_breadcrumb_site">{{ site.Title }}</span>
+  {{- else }}
+  {{- $top := . }}
+  {{- if and .Parent (not .Parent.IsHome) }}
+  {{- $top = .FirstSection }}
+  {{- end }}
+  <a class="nav_breadcrumb_page" href="{{ $top.RelPermalink }}">{{ $top.Title }}</a>
+  <span class="nav_breadcrumb_sep">|</span>
+  <a class="nav_breadcrumb_site" href="{{ absLangURL "" }}">{{ site.Title }}</a>
+  {{- end }}
+</div>
 <ul class="nav_body">
 <li class="nav-item">
 {{- partial "search" . }}
