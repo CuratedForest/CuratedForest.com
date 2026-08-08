@@ -138,7 +138,12 @@ html[data-mode="dark"]
 
 // Active (selected) item overrides to orange at all depths. custom.js
 // propagates .active up the ancestor .aside_inner chain, so the whole
-// breadcrumb of the current page reads orange.
+// breadcrumb of the current page reads orange. The first two selectors
+// cover top-level leaves (Search, Recently Changed, AI Usage, About Me)
+// and the root title, which sit directly in the outermost .aside_inner
+// and are not matched by the two-.aside_inner descendant form.
+.aside > .aside_inner > .section_title.active a,
+.aside > .aside_inner > section > .section_link.active a,
 .aside_inner .aside_inner .section_title.active a,
 .aside_inner .aside_inner .section_link.active a
   color: #ff9800 !important
