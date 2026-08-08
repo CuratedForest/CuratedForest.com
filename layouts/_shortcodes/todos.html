@@ -1,9 +1,10 @@
 {{/*
   todos shortcode
 
-  Lists every page that has a `todo:` entry in its front matter, showing
-  the todo text next to the link. Ordered by last modified date (newest
-  first), matching the drafts/recent lists. Used by
+  Lists every page that has a `todo:` entry in its front matter, newest
+  edits first. The todo value is rendered through markdownify, so both
+  single-line strings and multi-line markdown bullet lists (written as a
+  YAML block scalar, `todo: |-`) come out as proper markup. Used by
   content/drafts/todo.md, which is itself a draft and only exists in -D
   builds (curatedforest.farm).
 */}}
@@ -12,7 +13,7 @@
   {{- range sort $pages "Lastmod" "desc" }}
   <li>
     <a href="{{ .RelPermalink }}">{{ .Title }}</a>
-    <span class="todo-list__text">— {{ .Params.todo }}</span>
+    <div class="todo-list__text">{{ .Params.todo | markdownify }}</div>
   </li>
   {{- end }}
 </ul>

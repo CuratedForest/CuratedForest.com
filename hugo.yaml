@@ -67,6 +67,9 @@ params:
     - tech
     - software
     - plants
+    # Only exists in -D builds (curatedforest.farm), but without this the
+    # drafts/todo pages render without the docs sidebar there.
+    - drafts
   # Enable the theme's built-in Fuse.js site search (renders search box
   # behavior in _partials/search.html + js/search.min.js).
   search:
