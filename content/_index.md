@@ -8,7 +8,7 @@ evaluated, implemented, and documented with the goals to run all of the
 automation in my house, support all of technical needs of a business,
 and ultimately collaborate and automate the growth of food.
 
-## The "Walled Garden" vs the Curated Forest
+## The Curated Forest vs the "Walled Garden"
 Apple has a reputation for having a first class technology experience, you just have to stay in their ecosystem of hardware and technology. For many this is in their budget and don't mind the limitations of Apple products. 
 
 For me, I use Apple to set the bar for what the experience _should_ be, and am building that experience with open source tools and software so that we all can share in the magic today's technology can provide. This demand for share-ability fundamentally drives open source as a hard requirement, and aligns with my personal values.

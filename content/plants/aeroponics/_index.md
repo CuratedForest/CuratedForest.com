@@ -25,10 +25,12 @@ Aeroponics is similar to hydroponic water usage, both of which are able to reuse
 When growing vertically, it becomes impractical to stack layers of soil and/or water on top of each other. It can be done, but it costs more to support all the extra weight.
 
 # The Risks of Aeroponics
-The risks of aeroponics come 2 main domains. The systems are complex and thus prone to failure and the plants don't handle failures well.
+The risks of aeroponics come from two main domains. 
+1) The systems are complex and thus prone to failure.
+2) The plants will dry out and die rapidly.
 
 ## Plants dry out
 The major risk of aeroponics is that the plant roots dry out. When dirt is use, it can act as a buffer, giving the plant a source of moisture before the next watering; growth won't be ideal, but the plant won't die. With just air, there isn't that buffer so plants can dry out and die _much_ quicker. Within a couple of hours plants start to wilt, and after 24 hours plants **will** be dying.
 
 ## Systems failing
-Because of the pressures involved, the systems needed to run aeroponics are more complex, and with that complexity comes a proneness to failure. To address this requires an active approach to monitoring. See the [Applying DevOps](applying-devops.md) page for more information. Using an immediately responsive system like this is critical to the health of the plants.
+Because of the pressures involved, the systems needed to run aeroponics are more complex, and with that complexity comes a proneness to failure. To address this requires an active approach to monitoring. See the [Applying DevOps](applying-devops.md) page for more information. Using an immediately responsive system like this is critical to maintaining the system and health of the plants.
