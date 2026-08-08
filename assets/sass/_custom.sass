@@ -505,7 +505,11 @@ html[data-mode="dark"]
     grid-column: 3
 
 .nav_breadcrumb
-  justify-self: center
+  // Fill the middle nav column so the panel extends right up to the
+  // search/controls panel (the nav's 1rem grid-gap provides the gutters
+  // on both sides), instead of shrinking to fit the text and floating
+  // centered.
+  justify-self: stretch
   white-space: nowrap
   overflow: hidden
   text-overflow: ellipsis
