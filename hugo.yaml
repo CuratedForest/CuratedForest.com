@@ -1,6 +1,9 @@
 baseURL: https://CuratedForest.com/
 languageCode: en-us
 title: Curated Forest
+# Populate .Lastmod (and .GitInfo) from git history so the drafts page
+# (content/drafts.md) can sort drafts by true last-modified date.
+enableGitInfo: true
 theme:
   - github.com/onweru/compose
 module:

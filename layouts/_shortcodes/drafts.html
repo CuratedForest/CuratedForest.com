@@ -1,0 +1,21 @@
+{{/*
+  drafts shortcode
+
+  Lists links to every draft page on the site, ordered by last modified
+  date (newest first). Drafts only exist in builds run with `hugo -D`
+  (e.g. curatedforest.farm), so on a production build this renders an
+  empty list. The page using this shortcode is itself a draft, so it
+  never publishes to prod. It excludes itself from the list.
+*/}}
+{{- $page := .Page }}
+{{- $drafts := where site.RegularPages "Draft" true }}
+<ul class="draft-list">
+  {{- range sort $drafts "Lastmod" "desc" }}
+  {{- if ne .RelPermalink $page.RelPermalink }}
+  <li>
+    <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+    <time datetime="{{ .Lastmod.Format "2006-01-02" }}">— {{ .Lastmod.Format "Jan 2, 2006" }}</time>
+  </li>
+  {{- end }}
+  {{- end }}
+</ul>

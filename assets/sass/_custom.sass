@@ -143,6 +143,14 @@ html[data-mode="dark"]
 .aside_inner .aside_inner .section_link.active a
   color: #ff9800 !important
 
+// Draft pages (only present in -D builds, e.g. curatedforest.farm) get a
+// cyan link so they're visually distinct in the sidebar. Lower
+// specificity than the .active rules above, so an active draft still
+// reads orange.
+.aside .section_title.draft a,
+.aside .section_link.draft a
+  color: #0bc2f4
+
 // Each depth tunes all three text elements that can appear at that
 // level:
 //   * .section_title — the H2 for a section header
@@ -449,6 +457,19 @@ html[data-mode="dark"]
 // explicit clear it can end up floated alongside a tall TOC.
 .content .pager
   clear: both
+
+// --- Page timestamps ------------------------------------------------------
+// Created/Updated line rendered under the <h1> by document.html. "Created"
+// is the front-matter date; "Updated" is .Lastmod (git history via
+// enableGitInfo). Kept small and muted so it reads as metadata, not body
+// text.
+.page-dates
+  font-size: 0.85em
+  opacity: 0.7
+  margin: -0.5rem 0 1rem
+
+.page-dates__updated
+  margin-left: 1rem
 
 // --- Mobile nav cleanup ---------------------------------------------------
 // The theme's main.sass only imports "custom" (this file), so pull in the

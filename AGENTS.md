@@ -82,6 +82,13 @@ A decision table so you can jump straight to the right file.
   - `gallery` — responsive grid of thumbnails with a CSS-only lightbox.
     Use this for any multi-image display so the styling stays consistent.
   - `examples`, `all-examples` — used by the label-based-features docs.
+  - `drafts` — lists links to all draft pages ordered by Lastmod desc.
+    Only renders content in `-D` builds; used by `content/drafts.md`
+    (itself `draft: true`, so it never publishes to prod).
+- **Draft deployment (curatedforest.farm):** a second Netlify deploy builds
+  with drafts enabled. Sidebar links to draft pages get a `.draft` class in
+  `layouts/_partials/sidebar.html` and render cyan (`#0bc2f4`) via a rule in
+  `_custom.sass` (kept below the `.active` orange rule in specificity).
 - **Drafts:** Netlify runs plain `hugo` (no `-D`), so `draft: true` pages
   will not publish. Remove the flag when a page is ready to go live.
 
