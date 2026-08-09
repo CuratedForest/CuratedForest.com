@@ -70,7 +70,9 @@ A decision table so you can jump straight to the right file.
   does not resolve them. If you see wikilinks in existing content, they are
   bugs; convert them.
 - **Front matter fields we use:** `title` (required), `weight` (sidebar sort;
-  lower = higher), `draft` (bool), `date` (optional).
+  lower = higher), `draft` (bool), `date` (optional), `author_reviewed`
+  (bool, set once the author has reviewed the page), `editor_reviewed`
+  (bool, set after editorial review; implies author reviewed).
 - **Every section directory needs an `_index.md`** or it won't render in the
   docs sidebar hierarchy.
 - **Page bundles** (folder with `index.md`) are preferred whenever a page has
@@ -91,6 +93,16 @@ A decision table so you can jump straight to the right file.
     `content/search/todo.md` (also `draft: true`).
   - `recent` — lists links to all non-draft pages ordered by Lastmod desc
     (git-derived via `enableGitInfo`); used by `content/search/recent.md`.
+  - `needs-author-review` — lists pages lacking `author_reviewed: true`;
+    takes an optional `"draft"` argument to list drafts instead of
+    published pages; used twice by `content/search/author-review.md`
+    ("Published pages" and "Draft pages" sections).
+  - `needs-editor-review` — lists pages with `author_reviewed: true` but
+    lacking `editor_reviewed: true`; used by
+    `content/search/editor-review.md` (draft). Both review lists
+    exclude the search section itself and sort by Lastmod desc. Every
+    content page carries `author_reviewed: false` / `editor_reviewed:
+    false` placeholders so the flags are visible and flippable.
 - **Draft deployment (curatedforest.farm):** a second Netlify deploy builds
   with drafts enabled. Sidebar links to draft pages get a `.draft` class in
   `layouts/_partials/sidebar.html` and render cyan (`#42CAD7`) via an

@@ -2,6 +2,8 @@
 title: Running Custom Scripts, Automations, and Scenes
 type: docs
 weight: 30
+author_reviewed: false
+editor_reviewed: false
 ---
 
 When more logic and customization is needed, scripts, automations, and scenes can all be triggered by features. They can be the scripts created by these blueprints, or users can create and use their own. This section documents the shared dispatch model used by both `automation.labeled_feature_leaders` and `script.labeled_feature_follower`, plus how arguments and substitutions work.

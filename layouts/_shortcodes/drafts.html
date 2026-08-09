@@ -13,7 +13,7 @@
   {{- range sort $drafts "Lastmod" "desc" }}
   {{- if ne .RelPermalink $page.RelPermalink }}
   <li>
-    <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+    <a href="{{ .RelPermalink }}">{{ partial "breadcrumb-title.html" . }}</a>
     <time datetime="{{ .Lastmod.Format "2006-01-02" }}">— {{ .Lastmod.Format "Jan 2, 2006" }}</time>
   </li>
   {{- end }}

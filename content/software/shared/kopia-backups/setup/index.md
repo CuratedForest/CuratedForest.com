@@ -2,6 +2,8 @@
 title: Setup
 weight: 1
 type: docs
+author_reviewed: false
+editor_reviewed: false
 ---
 
 Flatpak doesn't work for getting files owned by root. Go for native packaging.

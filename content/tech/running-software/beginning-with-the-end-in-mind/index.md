@@ -3,6 +3,8 @@ title: Beginning With the End in Mind
 weight: 1
 type: docs
 draft: false
+author_reviewed: false
+editor_reviewed: false
 ---
 This document is for those who have started, or are considering starting their self hosting journey. My hope is it outlines a reasonably efficient path to getting running, along with some of the pitfalls I've learned the hard way. 
 

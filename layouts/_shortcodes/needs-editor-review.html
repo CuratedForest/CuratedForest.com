@@ -1,0 +1,19 @@
+{{/*
+  needs-editor-review shortcode
+
+  Lists every content page that has `author_reviewed: true` but lacks
+  `editor_reviewed: true`, newest edits first. Used by
+  content/search/needs-editor-review.md. Pages in the search section
+  itself are excluded (they're meta/tooling pages, not content to review).
+*/}}
+{{- $pages := where site.RegularPages "Section" "ne" "search" }}
+{{- $authorReviewed := where $pages "Params.author_reviewed" "eq" true }}
+{{- $unreviewed := where $authorReviewed "Params.editor_reviewed" "!=" true }}
+<ul class="review-list">
+  {{- range sort $unreviewed "Lastmod" "desc" }}
+  <li>
+    <a href="{{ .RelPermalink }}">{{ partial "breadcrumb-title.html" . }}</a>
+    <time datetime="{{ .Lastmod.Format "2006-01-02" }}">— {{ .Lastmod.Format "Jan 2, 2006" }}</time>
+  </li>
+  {{- end }}
+</ul>

@@ -2,6 +2,8 @@
 title: Temperature
 type: docs
 weight: 3
+author_reviewed: false
+editor_reviewed: false
 ---
 
 One of the variables that repeatedly comes up when looking at

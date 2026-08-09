@@ -2,6 +2,8 @@
 title: Label Based Features
 type: docs
 weight: 1
+author_reviewed: false
+editor_reviewed: false
 ---
 
 A maintainable, scalable, and dynamic way to drive Home Assistant

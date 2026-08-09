@@ -2,6 +2,8 @@
 title: Past Designs
 weight: 2
 type: docs
+author_reviewed: false
+editor_reviewed: false
 ---
 
 I've been building grow systems since November 2016. This page shows

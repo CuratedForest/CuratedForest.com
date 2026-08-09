@@ -3,6 +3,8 @@ title: Karakeep
 weight: 3
 type: docs
 draft: true
+author_reviewed: false
+editor_reviewed: false
 ---
 
 ## Bookmark tagging instructions

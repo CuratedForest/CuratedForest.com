@@ -1,6 +1,8 @@
 ---
 title: Aeroponics
 weight: 1
+author_reviewed: false
+editor_reviewed: false
 ---
 
 # What is Aeroponics

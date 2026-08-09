@@ -2,6 +2,8 @@
 title: Experiments
 type: docs
 weight: 3
+author_reviewed: false
+editor_reviewed: false
 ---
 
 After nearly a decade of work, I finally have a grow system running

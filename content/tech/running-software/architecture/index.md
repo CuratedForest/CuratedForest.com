@@ -3,6 +3,8 @@ title: Architecture
 weight: 2
 type: docs
 draft: false
+author_reviewed: false
+editor_reviewed: false
 ---
 This page contains the set of patterns and approaches I use when adding services and capabilities to the Curated Forest.
 

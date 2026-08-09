@@ -1,6 +1,8 @@
 ---
 title: Technology
 weight: 10
+author_reviewed: false
+editor_reviewed: false
 ---
 
 # The new playbook for running software

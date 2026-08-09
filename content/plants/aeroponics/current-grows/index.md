@@ -3,6 +3,8 @@ title: Current Grow Systems
 weight: 1
 type: docs
 todo: "- Flesh out the Notes and Narrative section with dates and specifics"
+author_reviewed: false
+editor_reviewed: false
 ---
 
 What the current aeroponic systems at Curated Forest look like in

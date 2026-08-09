@@ -3,6 +3,8 @@ type: docs
 title: "Professors"
 weight: 1
 draft: true
+author_reviewed: false
+editor_reviewed: false
 ---
 
 A template letter for reaching out to professors about graduate programs and

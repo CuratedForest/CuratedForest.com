@@ -2,6 +2,8 @@
 title: Misting Schedule
 type: docs
 weight: 1
+author_reviewed: false
+editor_reviewed: false
 ---
 
 Currently I have my plants on a 5 seconds on / 3 minutes off schedule.

@@ -5,6 +5,8 @@ type: docs
 draft: true
 aliases:
   - /tech/immich/
+author_reviewed: false
+editor_reviewed: false
 ---
 
 restore from backup

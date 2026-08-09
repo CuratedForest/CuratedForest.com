@@ -3,6 +3,8 @@ title: Data Collection
 weight: 5
 type: docs
 todo: "- Create and link page for plant tracking sensors in Home Assistant."
+author_reviewed: false
+editor_reviewed: false
 ---
 I'm lucky to have spent many years of my life working with data, both academically and in professional capacities. We're talking GBs a day and datasets in the TB size. So nothing CERN level, but still large enough to demand specific approaches to addressing scaling issues. These experiences have strongly influenced my views, and thus the approach outlined below.
 

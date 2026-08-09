@@ -5,6 +5,8 @@ weight: 6
 autoshrink: true
 aliases:
   - /tech/kubernetes/
+author_reviewed: false
+editor_reviewed: false
 ---
 # Kubernetes (K8s)
 ## What is it?

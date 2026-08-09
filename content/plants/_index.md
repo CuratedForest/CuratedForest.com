@@ -1,6 +1,8 @@
 ---
 title: Plants
 weight: 5
+author_reviewed: false
+editor_reviewed: false
 ---
 At this point, I've killed more plants than I've kept alive successfully, though that's trending the right direction finally. Plants are fun because they're easy to grow in poor conditions, and challenging to get all their parameters right and really have growth take off. 
 

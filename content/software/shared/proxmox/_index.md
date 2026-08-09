@@ -3,6 +3,8 @@ title: Proxmox
 weight: 1
 type: docs
 draft: true
+author_reviewed: false
+editor_reviewed: false
 ---
 
 Proxmox is a Virtual Machine Hypervisor built around Debian and typical Linux tooling. It's open source, though does require a license. Without one it presents a nag on login. Pretty minor and with no time limit it's a reasonable way to evaluate the product. My experience was that I trailed Proxmox for ~6 months, at which point I could see it was a good experience and it was worth supporting the company and bought some [community licenses](https://shop.proxmox.com/index.php?rp=/store/proxmox-ve-community).

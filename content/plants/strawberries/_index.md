@@ -3,6 +3,8 @@ title: Strawberries
 type: docs
 weight: 2
 todo: "- Add links?"
+author_reviewed: false
+editor_reviewed: false
 ---
 Strawberries are fascinating not because they are easy, but because they _are_ hard.  Fundamentally strawberries are fragile plants and when we push them to produce at their maximum capacity it leaves them no energy to protect themselves from pests and disease. Listening to Crop Talk (cite) the panel was asked how do you know if a farm is doing ok? And the answer was the plants are green! To me, that conversation managed to capture not just that there are struggles being seen, but they are industry wide.
 

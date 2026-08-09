@@ -3,6 +3,8 @@ title: AI Usage
 weight: 1
 type: docs
 draft: false
+author_reviewed: false
+editor_reviewed: false
 ---
 
 With today's technology, it's important to consider how and why AI is utilized. This document outlines all the best practices and lines I've drawn around AI.

@@ -2,6 +2,8 @@
 title: Hormone Treatments
 type: docs
 weight: 2
+author_reviewed: false
+editor_reviewed: false
 ---
 
 As I've read over the academic literature, what's jumped out at me is

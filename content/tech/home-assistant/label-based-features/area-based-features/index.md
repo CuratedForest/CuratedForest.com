@@ -2,6 +2,8 @@
 title: Area Based Features
 type: docs
 weight: 40
+author_reviewed: false
+editor_reviewed: false
 ---
 
 The Leader/Follower and Button stacks are great when you already have entities to wire together — but sometimes the user just needs an entity to *exist* in an area so other things can be wired against it. Area Based Features fill that gap.

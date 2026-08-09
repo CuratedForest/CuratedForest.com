@@ -5,6 +5,8 @@ type: docs
 draft: false
 aliases:
   - /tech/running-software/hardware-picks/
+author_reviewed: false
+editor_reviewed: false
 ---
 
 The great thing about open source is it'll run on pretty much anything. The downside is it doesn't always run _well_. I've looking all over the place for products that put open source first and collected the winners and losers here.

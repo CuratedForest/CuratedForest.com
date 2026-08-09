@@ -2,6 +2,8 @@
 title: Loud Sensor & Ad detection
 type: docs
 weight: 60
+author_reviewed: false
+editor_reviewed: false
 ---
 
 

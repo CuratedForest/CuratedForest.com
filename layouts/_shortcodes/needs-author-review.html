@@ -1,0 +1,27 @@
+{{/*
+  needs-author-review shortcode
+
+  Lists content pages whose front matter lacks `author_reviewed: true`,
+  newest edits first. Pass "draft" as the first positional argument to
+  list only draft pages; with no argument it lists only published
+  (non-draft) pages. Pages in the search section itself are excluded
+  (they're meta/tooling pages, not content to review).
+
+  Used by content/search/needs-author-review.md (published) and
+  content/search/needs-author-review-drafts.md (drafts).
+*/}}
+{{- $pages := where site.RegularPages "Section" "ne" "search" }}
+{{- if eq (.Get 0) "draft" }}
+{{- $pages = where $pages "Draft" "eq" true }}
+{{- else }}
+{{- $pages = where $pages "Draft" "ne" true }}
+{{- end }}
+{{- $unreviewed := where $pages "Params.author_reviewed" "!=" true }}
+<ul class="review-list">
+  {{- range sort $unreviewed "Lastmod" "desc" }}
+  <li>
+    <a href="{{ .RelPermalink }}">{{ partial "breadcrumb-title.html" . }}</a>
+    <time datetime="{{ .Lastmod.Format "2006-01-02" }}">— {{ .Lastmod.Format "Jan 2, 2006" }}</time>
+  </li>
+  {{- end }}
+</ul>

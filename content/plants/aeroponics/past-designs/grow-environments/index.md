@@ -2,6 +2,8 @@
 title: Grow Environments
 weight: 1
 type: docs
+author_reviewed: false
+editor_reviewed: false
 ---
 
 At its core, a Seedship is a controlled growing environment. The

@@ -2,6 +2,8 @@
 title: Overview
 weight: 1
 type: docs
+author_reviewed: false
+editor_reviewed: false
 ---
 
 TimescaleDB extends PostgreSQL with time-series superpowers, and it's

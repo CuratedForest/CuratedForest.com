@@ -12,7 +12,7 @@
 <ul class="todo-list">
   {{- range sort $pages "Lastmod" "desc" }}
   <li>
-    <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+    <a href="{{ .RelPermalink }}">{{ partial "breadcrumb-title.html" . }}</a>
     <div class="todo-list__text">{{ .Params.todo | markdownify }}</div>
   </li>
   {{- end }}

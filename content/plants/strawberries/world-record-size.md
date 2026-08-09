@@ -6,6 +6,8 @@ todo: |-
   - Give an academic voice
   - Document what probably works
   - NASA research is a bit of a myth (or put in Aeroponics)
+author_reviewed: false
+editor_reviewed: false
 ---
 # Having a Goal
 To learn about a thing, I've always known I need a direction and to be solving a problem. As I've picked strawberries to specialize in, I needed a topic to drive my research. While I think strawberry quality is what will differentiate a good product, it's easier to quantify the biggest (by weight) berry. 

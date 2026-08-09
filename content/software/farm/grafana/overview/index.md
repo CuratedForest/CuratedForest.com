@@ -2,6 +2,8 @@
 title: Overview
 weight: 1
 type: docs
+author_reviewed: false
+editor_reviewed: false
 ---
 
 Grafana is the visualization layer that turns raw time-series data

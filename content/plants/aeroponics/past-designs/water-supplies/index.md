@@ -2,6 +2,8 @@
 title: Water Supplies
 weight: 2
 type: docs
+author_reviewed: false
+editor_reviewed: false
 ---
 
 The water side of the Seedships: making and storing the misting water.

@@ -1,5 +1,7 @@
 ---
 title: The Curated Forest
+author_reviewed: false
+editor_reviewed: false
 ---
 
 # Welcome! 

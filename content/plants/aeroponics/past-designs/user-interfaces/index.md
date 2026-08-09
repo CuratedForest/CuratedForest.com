@@ -2,6 +2,8 @@
 title: User Interfaces
 weight: 3
 type: docs
+author_reviewed: false
+editor_reviewed: false
 ---
 
 There are two main services used to operate a Seedship:

@@ -5,6 +5,8 @@ type: docs
 todo: |-
   - Link easy to update to a new Best Practices: Updates page
   - Link easy to add to to a new Contributors page.
+author_reviewed: false
+editor_reviewed: false
 ---
 I've been playing in the tech and the startup world for over a decade. Here, some of the highest performing teams share their practices, tools, and culture, many of which can generically get lumped into DevOps. This page outlines how the DevOps approaches synergies with the needs of growing hydroponically.
 # What is DevOps?

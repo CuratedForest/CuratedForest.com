@@ -1,6 +1,8 @@
 ---
 title: Software Stacks
 weight: 15
+author_reviewed: false
+editor_reviewed: false
 ---
 
 The open-source software that runs Curated Forest. Start with

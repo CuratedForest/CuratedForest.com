@@ -1,0 +1,19 @@
+{{/*
+  breadcrumb-title partial
+
+  Given a page, returns its full title path from the top-level section
+  down, e.g. "Plants › Aeroponics › Current Grow Systems". The home page
+  itself is skipped. Used by the search-section listing shortcodes
+  (drafts, todos, recent, needs-author-review, needs-editor-review) so
+  links with ambiguous titles ("Overview", "Setup") stay identifiable.
+
+  .Ancestors walks nearest-parent-first, and Hugo has no prepend, so we
+  collect the page title first, then ancestors, and reverse the lot.
+*/}}
+{{- $titles := slice .Title }}
+{{- range .Ancestors }}
+  {{- if not .IsHome }}
+    {{- $titles = $titles | append .Title }}
+  {{- end }}
+{{- end }}
+{{- delimit ($titles | collections.Reverse) " › " -}}

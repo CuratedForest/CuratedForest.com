@@ -5,6 +5,8 @@ type: docs
 draft: false
 aliases:
   - /tech/running-software/software-picks/
+author_reviewed: false
+editor_reviewed: false
 ---
 
 The open-source software that makes up the Curated Forest stack, and why

@@ -3,6 +3,8 @@ title: Live Data
 weight: 4
 type: docs
 draft: true
+author_reviewed: false
+editor_reviewed: false
 ---
 
 Transparency is a core principle at Curated Forest, and that extends

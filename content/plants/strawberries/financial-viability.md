@@ -3,6 +3,8 @@ title: Financial Viability
 type: docs
 weight: 1
 todo: "- Market size"
+author_reviewed: false
+editor_reviewed: false
 ---
 There are a large number of factors that influence the financial viability of an idea. What I've outlined here are the broad signals pointing to there being opportunity in strawberries. They are indicators, but the ideas still need to be validated. Obviously the best way to validate financial viability is with a proven history of profitability, but before that can happen, a business plan must show the possibility first. 
 

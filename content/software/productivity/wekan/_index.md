@@ -3,6 +3,8 @@ title: Wekan
 weight: 1
 type: docs
 draft: true
+author_reviewed: false
+editor_reviewed: false
 ---
 
 For the MongoDB information, checkout [Mongo DB](Mongo%20DB.md)

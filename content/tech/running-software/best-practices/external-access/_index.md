@@ -5,6 +5,8 @@ type: docs
 draft: false
 aliases:
   - /tech/running-software/external-access/
+author_reviewed: false
+editor_reviewed: false
 ---
 
 How services are reached from outside the local network — and, just as
