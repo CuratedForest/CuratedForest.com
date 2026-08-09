@@ -67,6 +67,7 @@ params:
     - tech
     - software
     - plants
+    - about
     # Drafts/todo live under search/ and only exist in -D builds
     # (curatedforest.farm), but without this those pages render without
     # the docs sidebar there.

@@ -19,6 +19,9 @@
         sibling <div id="lbX" class="lightbox"> sits at the end of the
         gallery. The :target pseudo-class flips the matching overlay
         from display:none to display:flex.
+      * Lightbox ids are namespaced per gallery instance via
+        .Ordinal (g<permalink>-<ordinal>-<i>), so a page can host
+        several galleries without anchors colliding across them.
       * Backdrop and close button both point at "#_" (a no-op
         fragment that doesn't match any element) to close. Clicking
         outside the image hits the backdrop and closes; browser back
@@ -46,7 +49,7 @@
   {{- $resources = sort $resources "Name" "asc" -}}
 {{- end -}}
 {{- $count := len $resources -}}
-{{- $galleryID := printf "g%s" (anchorize .Page.RelPermalink) -}}
+{{- $galleryID := printf "g%s-%d" (anchorize .Page.RelPermalink) .Ordinal -}}
 {{- if $resources -}}
 <div class="gallery">
   {{- range $i, $r := $resources -}}
