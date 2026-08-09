@@ -41,7 +41,7 @@ risk high reward growing method appeals to the software engineer in me. One
 game I play professionally is downtime. The way my industry thinks about it
 is, for every minute of downtime how many millions of dollars are lost...
 Aeroponics is all the same skills, but a *much* easier game — I've written
-more about it on my {{< ref "plants/aeroponics/applying-devops" >}} page.
+more about it on my [Applying DevOps](plants/aeroponics/applying-devops) page.
 Ultimately I've applied these concepts and practices when building an
 automatic and open source aeroponic grow & data collection system. As I'm
 getting environmental parameters dialed in, what I'm finding is that when I
@@ -56,12 +56,12 @@ Or at least get started!
 
 The plants that currently captivate my imagination are CEA strawberries. I see
 so much potential for flavorful, off-season, local berries — a topic I've
-written about on my {{< ref "plants/strawberries/financial-viability" >}}
+written about on my [Financial Viability](plants/strawberries/financial-viability)
 page. Having investigated the process, I understand that we don't see many CEA
 strawberries because they are one of the more complex crops to manage and
 grow. The challenge I set for myself to guide my learning thus far has been
-figuring out how to grow the world's biggest strawberry (see
-{{< ref "plants/strawberries/world-record-size" >}}). It didn't work anything like I thought initially, but now I am
+figuring out how to grow [the world's biggest strawberry](plants/strawberries/world-record-size). 
+It didn't work anything like I thought initially, but now I am
 particularly interested in flower formation and what drives ----- to divide at
 the --- stage. Figure if I can create the right environments, I can target the
 ideal conditions for ------ formation when those are forming, and then shift
