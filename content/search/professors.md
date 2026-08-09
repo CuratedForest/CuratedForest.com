@@ -109,10 +109,9 @@ down to 3 questions.
 
 As you've seen, I've linked to [my website](https://CuratedForest.com) a
 couple of times, and that's a great resource to see what I've been working on
-personally. You can also see my professional history on LinkedIn here:
-https://www.linkedin.com/in/thehachmeister/
+personally. You can also see my professional history on [my LinkedIn](https://www.linkedin.com/in/thehachmeister/)
 
 Any time you have for a response is deeply appreciated,
 
 Sincerely,  
-Spencer Hachmeister
+Spencer
