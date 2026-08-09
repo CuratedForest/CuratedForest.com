@@ -1,4 +1,5 @@
 ---
+type: docs
 title: "Drafts"
 weight: 1
 draft: true

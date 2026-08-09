@@ -232,6 +232,7 @@ Match the symptom, jump to the fix.
 | Symptom | Likely cause |
 | --- | --- |
 | Search returns `Unexpected token '<'` in the browser console | `outputs.home` in `hugo.yaml` lost `JSON`, or `layouts/index.json` was deleted. |
+| Pages under `content/search/` render the search UI instead of their content | Pages inherit `.Type` from the section name ("search") and match `layouts/search/single.html`. Set `type: docs` in the page's front matter. |
 | Home page has no sidebar | `params.docSections` in `hugo.yaml` missing the leading `""`. |
 | Flash of light-mode on load, or stuck in light mode | One of the three dark-mode enforcement points is out of sync (see decision table above). |
 | `hugo` build error: `ref "…" not found` | `{{< ref >}}` target path is wrong. Path is relative to `content/`, without the `.md`. |

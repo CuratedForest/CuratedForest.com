@@ -1,4 +1,5 @@
 ---
+type: docs
 title: "Recently Changed"
 weight: 3
 ---
