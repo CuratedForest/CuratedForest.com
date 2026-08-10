@@ -42,13 +42,13 @@ This is critical because
 After nearly a decade of work, I'll finally have a grow system running
 well enough that I can run controlled experiments that can hit the
 targets for optimum growth. Each experiment has its own page under
-[Experiments]({{< ref "plants/strawberries/experiments" >}}):
+[Experiments](/plants/strawberries/experiments/):
 
-- [Misting Schedule]({{< ref "plants/strawberries/experiments/misting-schedule" >}}) —
+- [Misting Schedule](/plants/strawberries/experiments/misting-schedule/) —
   tuning mist on/off intervals, day vs night schedules, and detecting
   the water stress point.
-- [Hormone Treatments]({{< ref "plants/strawberries/experiments/hormone-treatments" >}}) —
+- [Hormone Treatments](/plants/strawberries/experiments/hormone-treatments/) —
   auxin treatments (PP333, CCC, NAA, CPPU) and when in the life cycle
   to apply them.
-- [Temperature]({{< ref "plants/strawberries/experiments/temperature" >}}) — day/night
+- [Temperature](/plants/strawberries/experiments/temperature/) — day/night
   temperature interactions around the ~68F / 20C optimum.

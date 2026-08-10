@@ -12,7 +12,7 @@ editor_reviewed: false
 ## What is it?
 Fundamentally Kubernetes is a standardized way of running software. Historically it's been optimized for running across servers and devices, but these days it's been simplified enough to be stable experience on a single node or machine.
 ### Installation
-There are a bunch of guides on how to install Kubernetes. To see my recommendation, see the installing [k3s on tumbleweed](k3s-tumbleweed.md) page.
+There are a bunch of guides on how to install Kubernetes. To see my recommendation, see the installing [k3s on tumbleweed](/tech/kubernetes/k3s-tumbleweed/) page.
 # K3s vs the world
 At the end of the day, one Kubernetes distribution should run basically the same as another. So I'd expect the bulk of Curated Forest to work regardless of which distribution is used. With that said, I like k3s because of it's strong single node support and local path storage. 
 # Community Resources

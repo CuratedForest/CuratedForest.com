@@ -113,20 +113,20 @@ One of the limitations of blueprints are that you can only have 1 object per blu
 		- leader that triggered (optional)
 		- scope (area, floor, none) (optional)
 		- scope_id - the resolved area_id or floor_id that corresponds to the scope (optional, passed automatically by the automation)
-	- Runs **[The Dispatch Loop](../dispatch-loop/)** against the follower entity's labels for the named feature. The implicit `feature` action item on a follower performs the direct entity action (`light.turn_on`, `select.select_option`, the toggle path, etc.) only when its value differs from the entity's current state.
+	- Runs **[The Dispatch Loop](/tech/home-assistant/label-based-features/dispatch-loop/)** against the follower entity's labels for the named feature. The implicit `feature` action item on a follower performs the direct entity action (`light.turn_on`, `select.select_option`, the toggle path, etc.) only when its value differs from the entity's current state.
 - Labeled Feature Generics (Script)
 	- A *generic feature dispatcher* — it knows nothing about specific button devices. Given a generic feature name (e.g. `Lights Off`, `Volume Up`, `Fan On`, `Night`, …) plus a scope it resolves the right entities in the scope and runs the correct service call against them.
 	- Resolution order: explicit `(Area |Floor |)Follower: <Feature>` labels first, falling back to a per-feature default domain (e.g. `light` for `Lights Off`). Both paths honor `<scope-prefix><Feature> Exclude: True` to opt entities out.
-	- See **[Labeled Feature Generics](../dispatch-loop/#labeled-feature-generics)** for the full feature catalog, the resolution algorithm, and the `toggle` modifier behavior.
+	- See **[Labeled Feature Generics](/tech/home-assistant/label-based-features/dispatch-loop/#labeled-feature-generics)** for the full feature catalog, the resolution algorithm, and the `toggle` modifier behavior.
 - Per-device Button Mapping Scripts (e.g. `script.labeled_feature_somrig`, `script.labeled_feature_styrbar`, `script.labeled_feature_symfonisk`)
 	- Translate a specific button-device family's raw event names (`1_short_release`, `2_double_press`, `brightness_move_up`, `dots_1_long_press`, etc.) plus contextual state (e.g. whether media is currently playing) into one or more calls to `labeled_feature_generics`.
-	- One mapping script per button-device family. See **[Button Mapping Scripts](../dispatch-loop/#button-mapping-scripts)**.
+	- One mapping script per button-device family. See **[Button Mapping Scripts](/tech/home-assistant/label-based-features/dispatch-loop/#button-mapping-scripts)**.
 - Labeled Feature Areas (Automation)
 	- Diffs the `label_map` attribute on `sensor.labeled_feature_areas_state` and dispatches creates / deletes to `script.labeled_feature_area`.
 	- Triggers on both `state` (`attribute: label_map`) and `homeassistant.start`. The start trigger re-publishes every current expected discovery payload so MQTT discovery survives a HA restart (idempotent because the discovery topics are retained).
 	- Diff algorithm: read `to_state.attributes.label_map` (and `from_state.attributes.label_map` on state triggers) — each entry keyed `<scope_id>||<label>` carries `{ scope_id, label, scope, component, declaring_area_id }`. `added = now - prev`, `removed = prev - now`; entries whose `component` changed show up in both (natural rename semantics). Both adds and removes are dispatched to `script.labeled_feature_area`; removes pass `delete: true` so the script — which owns canonical object_id naming — computes the right topic to retract.
 	- Removes run before adds so a component swap retracts the stale discovery topic before publishing the new one.
-	- See **[Area Based Features](../area-based-features/)**.
+	- See **[Area Based Features](/tech/home-assistant/label-based-features/area-based-features/)**.
 - Labeled Feature Area (Script)
 	- Per-feature dispatcher for the Area Based Features stack. Architecturally identical to `labeled_feature_generics` / `labeled_feature_somrig`: a big `choose:` block keyed on feature name. Each branch computes the canonical object_id for that feature, resolves the scope entity pool, and calls `script.labeled_feature_entities` to publish (or retract) the MQTT discovery payload(s).
 	- Accepts `delete: bool`. The flag is normalized into a top-level `_delete` variable once, and every `choose:` branch short-circuits on it *before* doing any feature-specific work (option-pool resolution, manifest entity enumeration, etc.). On `_delete = true` the branch calls `labeled_feature_entities` with `delete: true` and stops.

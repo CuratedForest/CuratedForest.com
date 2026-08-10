@@ -7,7 +7,7 @@ author_reviewed: false
 editor_reviewed: false
 ---
 
-For the MongoDB information, checkout [Mongo DB](Mongo%20DB.md)
+For the MongoDB information, checkout the Mongo DB docs below.
 
 By default, DB name is test
 

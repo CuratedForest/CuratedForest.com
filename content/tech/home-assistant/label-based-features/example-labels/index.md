@@ -6,7 +6,7 @@ author_reviewed: false
 editor_reviewed: false
 ---
 
-Every subsection page in [Label Based Features](../) ships an
+Every subsection page in [Label Based Features](/tech/home-assistant/label-based-features/) ships an
 `examples.md` page resource holding just the label snippets used to wire
 the feature into Home Assistant. This page rolls them all up so you can
 scan them together or copy them out without having to hop between pages.

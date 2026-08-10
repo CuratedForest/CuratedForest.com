@@ -19,7 +19,7 @@ running the design in the living room. Next step is scaling.
 ### Grow System
 
 The current grow system builds directly on the last iteration from
-[Past Designs]({{< ref "plants/aeroponics/past-designs" >}}) — the
+[Past Designs](/plants/aeroponics/past-designs/) — the
 plastic-tote design, and the first that was both easy to build and
 didn't leak.
 The failure modes that matter at this scale (clogged nozzles,

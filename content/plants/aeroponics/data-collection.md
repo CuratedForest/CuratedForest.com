@@ -48,7 +48,7 @@ While Grafana does offer great connectivity and can graph multiple sources on to
 One of the critical things understand when working with a dataset is: what will it be used for? For example, here I am talking about data collection relevant to the care and study of plants. And while plant centric data is great, it does not run a business. There is another whole suit of data and considerations specifically for business. These are systems for ERP, FSQA, safety forms, etc. I don't plan on addressing these data needs here, but do want to note their importance and mention they'll come when I document the Business Stack later this year.
 
 ## Alerting
-One of the important parts of aeroponics is monitoring and alerting when conditions are out of spec or in error. While Grafana offers top notch alerting, I've leaned it to Home Assistant based solutions. There main motivation behind this choice is that it allows for automatic or approved scripts to run in response to errors. See the [alerting](../../tech/home-assistant/alerting.md) page for more on how that's accomplished.
+One of the important parts of aeroponics is monitoring and alerting when conditions are out of spec or in error. While Grafana offers top notch alerting, I've leaned it to Home Assistant based solutions. There main motivation behind this choice is that it allows for automatic or approved scripts to run in response to errors. See the [alerting](/tech/home-assistant/alerting/) page for more on how that's accomplished.
 
 ## Reporting
 While Home Assistant supports simple reports against past sensor values, beyond simple spot checks, I find Grafana to be a **far** more complete and flexible solution for putting together beautiful dashboards that tell compelling stories.

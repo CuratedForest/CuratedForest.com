@@ -43,9 +43,9 @@ Because of all of the above (and more), I've made it my personal mission to move
 
 
 Documentation of the open-source technology stack that runs Curated
-Forest — see [the homepage](../) for the broader "what is this stack"
+Forest — see [the homepage](/) for the broader "what is this stack"
 pitch. The individual software tools live in the
-[Software](../software/) section.
+[Software](/software/) section.
 
 {{< button "./running-software/" "Running Software" "mb-1" >}}
 {{< button "./home-assistant/" "Home Assistant" "mb-1" >}}

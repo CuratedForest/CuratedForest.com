@@ -16,9 +16,9 @@ The way the big companies look at downtime and outages is how many **millions** 
 ### Monitoring and Alerting
 The DevOps practice that most impacts aeroponics is in the monitoring and alerting frameworks. There are two main avenues for this impact.
 
-The first is in responsiveness. A greenhouse grower checking the crops daily _will_ result in disaster if practicing aeroponics without alerting. For more on how this is addressed in Curated Forest, see the [alerting](../../tech/home-assistant/alerting.md) page. 
+The first is in responsiveness. A greenhouse grower checking the crops daily _will_ result in disaster if practicing aeroponics without alerting. For more on how this is addressed in Curated Forest, see the [alerting](/tech/home-assistant/alerting/) page. 
 
-The second is in the data collection needed for alerting. Because the pipeline from sensors to graphs is already in place, it's really easy to reuse these monitoring tools for reporting on plant growing conditions. This is further outlined on the [data collection](data-collection.md) page.
+The second is in the data collection needed for alerting. Because the pipeline from sensors to graphs is already in place, it's really easy to reuse these monitoring tools for reporting on plant growing conditions. This is further outlined on the [data collection](/plants/aeroponics/data-collection/) page.
 
 ## High Availability
 Admittedly the highly available requirement isn't quite so strict with aeroponics - I can take 5 or 10 minutes to reboot my server without too much impact to my plants. Though it does take similar disaster recovery planning; have to keep extra pumps and other spare parts just in case something break.
@@ -26,7 +26,7 @@ Admittedly the highly available requirement isn't quite so strict with aeroponic
 ### 2) Making systems that are easy to create and run software with.
 The other major way DevOps impacts my aeroponics practice is in terms of empowerment. At the end of the day I want to solve problems, not futz with frameworks, and I've spent SO much time futzing with frameworks. At this point I've followed industry best practices for a decade and have tried to boil them down to whats documented on this site. The key things are:
 ### Easy to run
-The software has to be easy to setup and run. My belief is even though the software is complex, the barrier to entry can be relatively low. For more on how the Curated Forest achieves that, see [Beginning With the End in Mind](../../tech/running-software/beginning-with-the-end-in-mind/index.md) page. 
+The software has to be easy to setup and run. My belief is even though the software is complex, the barrier to entry can be relatively low. For more on how the Curated Forest achieves that, see [Beginning With the End in Mind](/tech/running-software/beginning-with-the-end-in-mind/) page. 
 ### Easy to update
 One of the constant issues facing large companies is how to manage updates. Many industrial environments see so much risk in these updates that their policy is to not. But regardless of features, security updates demand consistent updates, and I'm thankful for the features that come along with it. There are better and worse ways to manage this, and you can see the strategy used for keeping a Curated Forest updated on the updates best practices page.
 

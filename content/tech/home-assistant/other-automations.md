@@ -11,9 +11,9 @@ editor_reviewed: false
 
 Card management
 
-Setting API key: See [Wekan](../../services/Wekan.md)
+Setting API key: See [Wekan](/software/productivity/wekan/)
 
-[Wekan](../../services/Wekan.md)
+[Wekan](/software/productivity/wekan/)
 
 Add alert if automation fails.
 
