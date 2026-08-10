@@ -8,7 +8,8 @@
   never publishes to prod. It excludes itself from the list.
 */}}
 {{- $page := .Page }}
-{{- $drafts := where site.RegularPages "Draft" true }}
+{{- $content := where site.Pages "Kind" "in" (slice "page" "section") }}
+{{- $drafts := where $content "Draft" true }}
 <ul class="draft-list">
   {{- range sort $drafts "Lastmod" "desc" }}
   {{- if ne .RelPermalink $page.RelPermalink }}

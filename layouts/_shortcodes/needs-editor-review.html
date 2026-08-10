@@ -2,13 +2,14 @@
   needs-editor-review shortcode
 
   Lists pages that have `author_reviewed: true` but lack `editor_reviewed:
-  true`, newest edits first. The home page (content/_index.md) is not in
-  site.RegularPages, so it's unioned in explicitly. The page calling this
+  true`, newest edits first. Includes section landing pages (_index.md)
+  and the home page — site.Pages filtered to Kind page/section/home,
+  since RegularPages skips both sections and home. The page calling this
   shortcode is excluded so the list doesn't reference itself.
 
   Used by content/search/editor-review.md.
 */}}
-{{- $pages := site.RegularPages | union (slice site.Home) }}
+{{- $pages := where site.Pages "Kind" "in" (slice "page" "section" "home") }}
 {{- $authorReviewed := where $pages "Params.author_reviewed" "eq" true }}
 {{- $unreviewed := where $authorReviewed "Params.editor_reviewed" "!=" true }}
 {{- $caller := .Page }}

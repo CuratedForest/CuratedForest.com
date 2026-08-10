@@ -8,7 +8,8 @@
   content/search/todo.md, which is itself a draft and only exists in -D
   builds (curatedforest.farm).
 */}}
-{{- $pages := where site.RegularPages "Params.todo" "!=" nil }}
+{{- $content := where site.Pages "Kind" "in" (slice "page" "section") }}
+{{- $pages := where $content "Params.todo" "!=" nil }}
 <ul class="todo-list">
   {{- range sort $pages "Lastmod" "desc" }}
   <li>

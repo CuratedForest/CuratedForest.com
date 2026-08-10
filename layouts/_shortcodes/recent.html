@@ -6,7 +6,8 @@
   enableGitInfo. Used by content/recent.md; excludes itself from the list.
 */}}
 {{- $page := .Page }}
-{{- $pages := where site.RegularPages "Draft" "ne" true }}
+{{- $content := where site.Pages "Kind" "in" (slice "page" "section") }}
+{{- $pages := where $content "Draft" "ne" true }}
 <ul class="recent-list">
   {{- range sort $pages "Lastmod" "desc" }}
   {{- if ne .RelPermalink $page.RelPermalink }}

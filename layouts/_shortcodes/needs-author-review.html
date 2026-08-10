@@ -4,14 +4,15 @@
   Lists pages whose front matter lacks `author_reviewed: true`, newest
   edits first. Pass "draft" as the first positional argument to list only
   draft pages; with no argument it lists only published (non-draft)
-  pages. The home page (content/_index.md) is not in site.RegularPages,
-  so it's unioned in explicitly. The page calling this shortcode is
+  pages. Includes section landing pages (_index.md) and the home page —
+  site.Pages filtered to Kind page/section/home, since RegularPages
+  skips both sections and home. The page calling this shortcode is
   excluded so the list doesn't reference itself.
 
   Used by content/search/author-review.md ("Published pages" and "Draft
   pages" sections).
 */}}
-{{- $pages := site.RegularPages | union (slice site.Home) }}
+{{- $pages := where site.Pages "Kind" "in" (slice "page" "section" "home") }}
 {{- if eq (.Get 0) "draft" }}
 {{- $pages = where $pages "Draft" "eq" true }}
 {{- else }}
