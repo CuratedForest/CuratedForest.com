@@ -1,27 +1,31 @@
 {{/*
   needs-author-review shortcode
 
-  Lists content pages whose front matter lacks `author_reviewed: true`,
-  newest edits first. Pass "draft" as the first positional argument to
-  list only draft pages; with no argument it lists only published
-  (non-draft) pages. Pages in the search section itself are excluded
-  (they're meta/tooling pages, not content to review).
+  Lists pages whose front matter lacks `author_reviewed: true`, newest
+  edits first. Pass "draft" as the first positional argument to list only
+  draft pages; with no argument it lists only published (non-draft)
+  pages. The home page (content/_index.md) is not in site.RegularPages,
+  so it's unioned in explicitly. The page calling this shortcode is
+  excluded so the list doesn't reference itself.
 
-  Used by content/search/needs-author-review.md (published) and
-  content/search/needs-author-review-drafts.md (drafts).
+  Used by content/search/author-review.md ("Published pages" and "Draft
+  pages" sections).
 */}}
-{{- $pages := where site.RegularPages "Section" "ne" "search" }}
+{{- $pages := site.RegularPages | union (slice site.Home) }}
 {{- if eq (.Get 0) "draft" }}
 {{- $pages = where $pages "Draft" "eq" true }}
 {{- else }}
 {{- $pages = where $pages "Draft" "ne" true }}
 {{- end }}
 {{- $unreviewed := where $pages "Params.author_reviewed" "!=" true }}
+{{- $caller := .Page }}
 <ul class="review-list">
   {{- range sort $unreviewed "Lastmod" "desc" }}
+  {{- if ne .RelPermalink $caller.RelPermalink }}
   <li>
     <a href="{{ .RelPermalink }}">{{ partial "breadcrumb-title.html" . }}</a>
     <time datetime="{{ .Lastmod.Format "2006-01-02" }}">— {{ .Lastmod.Format "Jan 2, 2006" }}</time>
   </li>
+  {{- end }}
   {{- end }}
 </ul>
