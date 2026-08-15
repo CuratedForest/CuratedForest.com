@@ -3,7 +3,7 @@ title: Resources
 type: docs
 weight: 3
 autoshrink: true
-draft: true
+draft: false
 author_reviewed: true
 editor_reviewed: false
 todo: |
