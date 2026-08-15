@@ -73,7 +73,7 @@ to collect plant data. Today I have that mastered and am grappling with how to
 manage and collect business AND farm data. Beyond environmental conditions, a
 CEA farm requires tracking for financials in an ERP, FSQA forms, safety forms,
 sample testing, maintenance and calibrations; as well as systems for security,
-cameras, printers, tablets, and hand scanners. 
+cameras, printers, tablets, and hand scanners.
 
 ## The Questions
 
@@ -91,5 +91,5 @@ down to 3 questions.
 As you've seen, I've linked to [my website](https://CuratedForest.com) a couple of times, and that's a great resource to catch up on what I've been working on personally. You can also see my professional history on [my LinkedIn](https://www.linkedin.com/in/thehachmeister/)
 
 Any time you have for a response is deeply appreciated,
-Sincerely,  
+Sincerely,
 Spencer
