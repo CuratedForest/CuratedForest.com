@@ -350,7 +350,10 @@ html[data-mode="dark"]
   display: none
   position: fixed
   inset: 0
-  z-index: 100
+  // Must top the theme's chrome: .nav_header sits at z-index 999999 and
+  // the sticky .aside at 9999, so anything lower renders *under* the
+  // nav bar and sidebar instead of overlaying them.
+  z-index: 1000000
   align-items: center
   justify-content: center
   padding: 1.5rem
@@ -383,8 +386,10 @@ html[data-mode="dark"]
       display: block
       width: auto
       height: auto
-      max-width: calc(100vw - 3rem)
-      max-height: calc(100vh - 3rem)
+      // 90vw/vh leaves a visible margin of backdrop around the image so
+      // it reads as a viewer, not a full-bleed takeover.
+      max-width: 90vw
+      max-height: 90vh
       object-fit: contain
       border-radius: 0.25rem
 
