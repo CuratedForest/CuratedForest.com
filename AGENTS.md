@@ -184,7 +184,7 @@ sections. The rules it hard-codes:
 
 - Depths ≥ 4 auto-collapse on load.
 - Sections with `autoshrink: true` in their `_index.md` front matter
-  auto-collapse at any depth (currently About, Kubernetes, Running
+  auto-collapse at any depth (currently Kubernetes, Running
   Software, and the Shared and Productivity stacks under Software
   Stacks). The
   partial renders an `.autoshrink` class on the section's `.aside_inner`;

@@ -1,6 +1,6 @@
 ---
 title: Upper-Half Ideas
-weight: 6
+weight: 9
 type: docs
 draft: true
 author_reviewed: false
