@@ -81,7 +81,11 @@ A decision table so you can jump straight to the right file.
   applies automatically per `.gitattributes`. `images/logo.png` is the nav
   logo (do not edit by hand; see icons step above).
 - **Shortcodes in-repo** (`layouts/_shortcodes/`):
-  - `gallery` — responsive grid of thumbnails with a CSS-only lightbox.
+  - `gallery` — responsive grid of thumbnails with a CSS-only lightbox
+    (`:target`-driven; `assets/js/custom.js` relocates the `.lightbox`
+    nodes to `<body>` on load because `.content`'s `backdrop-filter`
+    would otherwise become their fixed-position containing block and
+    break viewport centering — keep overlays out of blurred ancestors).
     Use this for any multi-image display so the styling stays consistent.
   - `examples`, `all-examples` — used by the label-based-features docs.
   - `drafts` — lists links to all draft pages ordered by Lastmod desc.

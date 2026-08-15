@@ -597,3 +597,53 @@ html[data-mode="dark"]
 // The theme's main.sass only imports "custom" (this file), so pull in the
 // mobile nav overrides from their own partial to keep this file readable.
 @import "mobile-nav"
+
+// --- Print ------------------------------------------------------------------
+// Screen chrome makes no sense on paper and actively breaks pagination:
+// the header logo fills page 1, the sidebar's "Main Menu" toggle label
+// (a checkbox-hack <label>, dead in print) spills onto page 2, and the
+// article only starts on page 3. Hide all navigation chrome and strip
+// the dark translucent panels / light text, which are designed for the
+// background image and would print as pale gray on white (or waste ink
+// where browsers honor printBackground).
+@media print
+  .nav_header,
+  .aside,
+  .page-toc,
+  .pager,
+  #toTop
+    display: none !important
+
+  html,
+  body
+    background: none !important
+
+  // Force dark-on-light text. The site pins dark mode, so --text is
+  // near-white; re-pin the variable at the same specificity the theme
+  // uses (html[data-mode]) so the override actually wins.
+  html[data-mode]
+    --text: #111
+    --theme: #1a7a4a
+
+  // .main clears the fixed nav with 108px of padding-top on screen;
+  // with the nav hidden in print that becomes a blank strip on page 1.
+  .main
+    padding-top: 0
+
+  .content
+    background: none
+    backdrop-filter: none
+    -webkit-backdrop-filter: none
+    border-radius: 0
+    padding: 0
+    color: var(--text)
+
+  .content a:not(.button)
+    color: var(--theme)
+
+  // Keep headings glued to what follows them and images unsplit.
+  h1, h2, h3, h4
+    break-after: avoid
+  img, figure, .gallery__item
+    break-inside: avoid
+

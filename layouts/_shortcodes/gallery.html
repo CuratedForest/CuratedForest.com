@@ -15,10 +15,14 @@
               up beyond their native resolution.
 
   Lightbox mechanics:
-      * No JavaScript. Each thumbnail is an <a href="#lbX"> and a
+      * No lightbox JavaScript. Each thumbnail is an <a href="#lbX"> and a
         sibling <div id="lbX" class="lightbox"> sits at the end of the
         gallery. The :target pseudo-class flips the matching overlay
-        from display:none to display:flex.
+        from display:none to display:flex. (One tiny JS assist in
+        assets/js/custom.js relocates the .lightbox nodes to <body> on
+        load, because .content's backdrop-filter would otherwise become
+        their fixed-position containing block and break viewport
+        centering.)
       * Lightbox ids are namespaced per gallery instance via
         .Ordinal (g<permalink>-<ordinal>-<i>), so a page can host
         several galleries without anchors colliding across them.

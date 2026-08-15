@@ -27,7 +27,17 @@
 //      * The ancestor chain of the active page is always expanded so
 //        deep pages land with their location in context.
 //
-// 3. Page-ToC scroll-spy: marks the .page-toc link whose heading is
+// 3. Gallery lightbox relocation: the lightbox overlays are emitted
+//    inline next to their gallery (inside <main class="content">), but
+//    .content's backdrop-filter makes it the containing block for
+//    fixed-position descendants — so position:fixed; inset:0 would only
+//    cover the content column and centering would be relative to the
+//    full (tall) content height, pushing the image below the fold.
+//    Moving the .lightbox elements to <body> restores true viewport
+//    pinning. Ids are unchanged, so the CSS-only :target mechanics and
+//    the #_ close links keep working untouched.
+//
+// 4. Page-ToC scroll-spy: marks the .page-toc link whose heading is
 //    currently in view with .active so the ToC highlights the reader's
 //    position (styled green in _custom.sass). The theme's own spy only
 //    covers the sidebar ToC, not the in-content one.
@@ -146,6 +156,24 @@
       };
       scrollToHighest();
       setTimeout(scrollToHighest, 120);
+    }
+  });
+})();
+
+// Relocate gallery lightbox overlays to <body> so position:fixed is
+// viewport-relative (see header note 3). Runs before paint where
+// possible; lightboxes are display:none until targeted, so the move is
+// never visible.
+(function relocateLightboxes() {
+  if (typeof document === 'undefined') return;
+  function ready(fn) {
+    if (document.readyState !== 'loading') fn();
+    else document.addEventListener('DOMContentLoaded', fn);
+  }
+  ready(function () {
+    var lightboxes = document.querySelectorAll('.lightbox');
+    for (var i = 0; i < lightboxes.length; i++) {
+      document.body.appendChild(lightboxes[i]);
     }
   });
 })();
