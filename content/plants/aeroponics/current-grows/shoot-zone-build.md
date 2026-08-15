@@ -1,6 +1,6 @@
 ---
-title: Water Supply Build
-weight: 6
+title: Shoot Zone Build
+weight: 3
 type: docs
 draft: true
 author_reviewed: false

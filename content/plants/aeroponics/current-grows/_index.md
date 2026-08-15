@@ -1,5 +1,5 @@
 ---
-title: Current Grow Systems
+title: Current Grow System
 weight: 1
 type: docs
 todo: "- Flesh out the Notes and Narrative section with dates and specifics"
