@@ -6,24 +6,24 @@ draft: false
 author_reviewed: true
 editor_reviewed: false
 ---
-With today's technology, it's important to consider how and why AI is utilized. This document outlines all the best practices and lines I've drawn around using AI.
+With today's technology, it's important to consider how and why AI is utilized. This document outlines all the best practices and boundaries I've implemented around AI use.
 
 # AI Disclosure
 
-I've been working on the Curated Forest architecture, or one with similar goals, for almost a decade. The structure and design are 100% my own and built based on experience gained cutting my teeth trying to get Kubernetes and Home Assistant labels to work, mostly before AI. Both Kubernetes & Home Assistant Templates are finicky for way more than one reason and I get them wrong more often than an LLM. It's been especially helpful as the script size creeps into unmanageable and I've needed to rearrange bits or convert from scripts to a custom component.
+I've been working on the Curated Forest architecture for almost a decade. The structure and design are 100% my own and built based on experience gained cutting my teeth trying to get Kubernetes and Home Assistant labels to work, mostly before AI. Both Kubernetes & Home Assistant Templates are finicky in many ways and I get them wrong more often than an LLM. It's been especially helpful as the script size creeps into unmanageability and I've needed to refactor and rearrange sections or convert from scripts to a custom component.
 
 All that to say, in this case AI has contributed to a significantly quicker soup, no slop.
 
 # Ownership
-At the end of the day I see AI contributions as still owned by the prompter. Whether it was written by AI or not, the quality and results are a direct reflection of the prompter's standards, approach, and ability, not their tool use.
+I see AI contributions as still owned by the prompter. Whether it was written by AI or not, the quality and results are a direct reflection of the prompter's standards, approach, and ability, not the tool used.
 
 # Where is AI _not_ useful?
 
-## Teaching me to write
-As far as skills go, I'm seeing writing as my voice, and thus more and more important to my career, especially in the long term. So rather than turn my writing tasks over to AI, I've made the decision to strengthen my writing skills instead.
+## Writing
+As far as skills go, I see writing as my voice, and thus pertinent to my career, especially in the long term. So, rather than turn my writing tasks over to AI, I've made the decision do all my own writing and strengthen that skill instead.... Editing is a different story.
 
 ## Vibe coding
-Leaving all decisions up to the AI and telling it to `make no mistakes` is an approach, but not for me. I've spent decades honing my opinions around software and how it should work and I find the approaches and results _always_ need refinement.
+Leaving all decisions up to AI and telling it to `make no mistakes` is an approach, but not for me. I've spent decades honing my opinions around software and how it should work; I find the approaches and results _always_ need refinement.
 
 ## Leaving information unverified
 AI can and will mostly turn up correct information, but I've also seen it return incredibly incorrect responses. Even when in research mode and citing sources! Double check and test everything!

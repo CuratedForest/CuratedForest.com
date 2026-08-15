@@ -12,10 +12,10 @@ Aeroponics is a subset of hydroponics where you let the plant's roots hang in ai
 This is how NASA approach Aeroponics. They found that water droplet sizes in the 20nn - 50nm range to be optimal. For most DIY solutions, this means using a tiny nozzle at between 80 and 100 PSI.
 
 ## Low Pressure Aeroponics
-There are many budget builds that still mist plant roots in some mannor, but do so in ways that more completely dose the plant roots. These work and will grow plants, but because the droplet size isn't ideal, neither will be the growth.
+There are many budget builds that still mist plant roots in some manor, but do so in ways that more completely dose the plant roots. These work and will grow plants, but because the droplet size isn't ideal, neither will be the growth.
 
 # Why Practice Aeroponics
-When growing plants there are a lot of environmental parameters that have to be dialed in. Most people are aware of temperature, co2, and humidity, but plants also require oxygen in the root zone for some of the biological processes.
+When growing plants there are a lot of environmental parameters that have to be dialed in. Most people are aware of temperature, CO2, and humidity, but plants also require oxygen in the root zone for some of the biological processes.
 
 ## Increased Growth
 By leaving the roots in air and letting them dry out slightly, the plant has access to all the oxygen it could need. When done correctly, this can increase growth rates by up to 20% when compared to other approaches.
