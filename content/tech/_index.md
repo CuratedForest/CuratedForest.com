@@ -1,6 +1,8 @@
 ---
-title: Technology
+title: Running Software & Technology
 weight: 10
+aliases:
+  - /tech/running-software/
 author_reviewed: false
 editor_reviewed: false
 ---
@@ -8,7 +10,7 @@ editor_reviewed: false
 # The new playbook for running software
 When I was growing up, the LAMP (Linux, Apache, MySQL, and PHP) stack was hands down the easiest way to get a project up and running. All the technologies had been picked and refined to work _well_ together. Today there is so much fragmentation and an abundance of ways to do anything that what is the easiest or most efficient gets entirely drowned out in the sea of how to configure everything. My hope for the Curated Forest is to offer a path similar to the LAMP stack, but for the modern set of technology.
 
-For more on what that looks like for software, see the Architecture page. If your curious about the physical requirements, see the Hardware page.
+For more on what that looks like for software, see the Architecture page. If your curious about the physical requirements, see the Picking Hardware page.
 
 ## Complexity 
 Today's software can be as simple as a single go binary and scale all the way up to Kuberenetes clusters with hundreds of nodes. My goal is to have the minimal amount of complexity, while still supporting _everything_ a business could need. The biggest issue I had was that Kubernetes had a reputation for needing a _team_ to run it, and it's just me running my home lab. I had also ran it professionally for a couple of years and thought that was accurate. So I spent YEARS I looking for alternatives to Kubernetes, and every time I dug into a possible alternative I ran into major downsides.
@@ -47,6 +49,10 @@ Forest — see [the homepage](/) for the broader "what is this stack"
 pitch. The individual software tools live in the
 [Software](/software/) section.
 
-{{< button "./running-software/" "Running Software" "mb-1" >}}
+{{< button "./beginning-with-the-end-in-mind/" "Beginning With the End in Mind" "mb-1" >}}
+{{< button "./best-practices/" "Best Practices" "mb-1" >}}
+{{< button "./architecture/" "Architecture" "mb-1" >}}
 {{< button "./home-assistant/" "Home Assistant" "mb-1" >}}
-{{< button "./hardware-picks/" "Hardware Picks" "mb-1" >}}
+{{< button "./kubernetes/" "Kubernetes" "mb-1" >}}
+{{< button "./software-picks/" "Picking Software" "mb-1" >}}
+{{< button "./hardware-picks/" "Picking Hardware" "mb-1" >}}

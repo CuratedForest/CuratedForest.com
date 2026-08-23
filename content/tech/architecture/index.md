@@ -1,8 +1,10 @@
 ---
 title: Architecture
-weight: 2
+weight: 3
 type: docs
 draft: false
+aliases:
+  - /tech/running-software/architecture/
 author_reviewed: false
 editor_reviewed: false
 ---
@@ -15,7 +17,7 @@ The way I see it is if I have to install a piece of software on my local compute
 
 One of the biggest reasons to take this approach is how well it supports multiple devices and users. Rather than having to install the same thing across a bunch of different devices, I just point everything to the same URL. Once it's running, adding devices is trivial.
 
-In my lab, the majority of my servers are on Kubernetes to run the underlying software. I have more about how and what I run on the [Kubernetes](/tech/kubernetes/) page. If you're new to self hosting, check out the [beginning with the end in mind](/tech/running-software/beginning-with-the-end-in-mind/) page to understand if Kubernetes is for you. If not, the [Home Assistant OS](/tech/home-assistant/) is a totally reasonable way to run your server as well. 
+In my lab, the majority of my servers are on Kubernetes to run the underlying software. I have more about how and what I run on the [Kubernetes](/tech/kubernetes/) page. If you're new to self hosting, check out the [beginning with the end in mind](/tech/beginning-with-the-end-in-mind/) page to understand if Kubernetes is for you. If not, the [Home Assistant OS](/tech/home-assistant/) is a totally reasonable way to run your server as well. 
 
 Both the [Home Assistant OS](/tech/home-assistant/) and [Kubernetes](/tech/kubernetes/) pages have what software I recommend running on them.
 
@@ -70,7 +72,7 @@ To support my monitoring needs, I lean heavily on the industry choices of Grafan
 # Physical Structure
 Saying Curated Forest takes over once you get a VM is one thing, but how do I actually recommend structuring your lab and clusters is another! 
 
-Hardware really doesn't matter! Physically, my lab consists of the laptops I've decommissioned in the last decade. Admittedly I have fill their RAM to capacity and had a couple beefy laptops, but even one is enough to get started. See the [Hardware](/tech/hardware-picks/) page for more.
+Hardware really doesn't matter! Physically, my lab consists of the laptops I've decommissioned in the last decade. Admittedly I have fill their RAM to capacity and had a couple beefy laptops, but even one is enough to get started. See the [Picking Hardware](/tech/hardware-picks/) page for more.
 
 ## Proxmox
 Regardless of what hardware you go with, I like to run my VMs through Proxmox. There are other options out there, but usually they get costly and require licenses. Proxmox does require a license as well, but I find their community pricing to be reasonable (considering the alternatives). Plus, you can evaluate the product indefinitely! 

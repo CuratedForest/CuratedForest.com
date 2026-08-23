@@ -1,6 +1,6 @@
 ---
 title: Alerting
-weight: 2
+weight: 1
 type: docs
 draft: true
 author_reviewed: false

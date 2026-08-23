@@ -1,8 +1,10 @@
 ---
 title: Backups
-weight: 4
+weight: 1
 type: docs
 draft: false
+aliases:
+  - /tech/running-software/best-practices/backups/
 author_reviewed: false
 editor_reviewed: false
 ---

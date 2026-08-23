@@ -1,7 +1,7 @@
 ---
 title: Label Based Features
 type: docs
-weight: 1
+weight: 2
 author_reviewed: false
 editor_reviewed: false
 ---

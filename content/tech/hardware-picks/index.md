@@ -1,6 +1,6 @@
 ---
-title: Hardware
-weight: 99
+title: Picking Hardware
+weight: 7
 type: docs
 draft: false
 aliases:

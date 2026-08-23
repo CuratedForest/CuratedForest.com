@@ -1,8 +1,10 @@
 ---
 title: Best Practices
-weight: 4
+weight: 2
 type: docs
 draft: false
+aliases:
+  - /tech/running-software/best-practices/
 author_reviewed: false
 editor_reviewed: false
 ---

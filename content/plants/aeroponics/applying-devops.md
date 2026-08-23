@@ -26,7 +26,7 @@ Admittedly the highly available requirement isn't quite so strict with aeroponic
 ## 2) Making systems that are easy to create and run software with.
 The other major way DevOps impacts my aeroponics practice is in terms of user empowerment. At the end of the day I want to solve problems, not futz with frameworks, and I've spent SO much time futzing with frameworks. At this point I've followed what are the industry's best practices for a decade, and have boiled them down to whats documented on this site. The key things are:
 ### Easy to run
-The software has to be easy to setup and run. My belief is even though the software is complex, the barrier to entry can be relatively low. For more on how the Curated Forest achieves that, see [Beginning With the End in Mind](/tech/running-software/beginning-with-the-end-in-mind/) page. 
+The software has to be easy to setup and run. My belief is even though the software is complex, the barrier to entry can be relatively low. For more on how the Curated Forest achieves that, see [Beginning With the End in Mind](/tech/beginning-with-the-end-in-mind/) page. 
 ### Easy to update
 One of the constant issues facing large companies is how to manage updates. Many industrial environments see so much risk in these updates that their policy is to not. But regardless of features, security updates demand consistent updates, and I'm thankful for the features that come along with it. There are better and worse ways to manage this, and you can see the strategy used for keeping a Curated Forest updated on the updates best practices page.
 

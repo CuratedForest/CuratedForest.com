@@ -22,7 +22,7 @@ This is where my decades of experience playing with anything with bits and bytes
 This is what makes the Curated Forest the antithesis to the Walled Garden - A sane default path is laid out here, and you're encouraged to lay some bricks of your own.
 
 ### A Note For Beginners
-I've tried to take the most functional and flexible approaches to running software today. Unfortunately that comes with a ton of associated complexity! My hope is that I've taken the brunt of learning those ins & outs, and can translate it down to only what is absolutely necessary. Take a look at [Beginning With the End in Mind](/tech/running-software/beginning-with-the-end-in-mind/) for a more detailed outline of technical expectations. 
+I've tried to take the most functional and flexible approaches to running software today. Unfortunately that comes with a ton of associated complexity! My hope is that I've taken the brunt of learning those ins & outs, and can translate it down to only what is absolutely necessary. Take a look at [Beginning With the End in Mind](/tech/beginning-with-the-end-in-mind/) for a more detailed outline of technical expectations. 
 
 ## Home Assistant
 A huge part of what brings a next generation experience to Curated Forest, especially as a home automation provider, is the automation driven by Home Assistant. This is an AMAZING product and community that I've been dabbling with for a decade. It works so well when done right, but can be a non-stop headache if done poorly. Coming from a software engineering background, I have deeply educated opinions on how software should work and be organized, and will share how I've configured my home automation to be simple and useful. See the [Home Assistant](/tech/home-assistant/) documentation.

@@ -1,6 +1,6 @@
 ---
 title: Other Automations
-weight: 3
+weight: 4
 type: docs
 draft: true
 author_reviewed: false

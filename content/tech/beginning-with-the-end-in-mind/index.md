@@ -3,6 +3,8 @@ title: Beginning With the End in Mind
 weight: 1
 type: docs
 draft: false
+aliases:
+  - /tech/running-software/beginning-with-the-end-in-mind/
 author_reviewed: false
 editor_reviewed: false
 ---

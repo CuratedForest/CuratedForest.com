@@ -2,9 +2,10 @@
 title: External Access
 weight: 3
 type: docs
-draft: false
+draft: true
 aliases:
   - /tech/running-software/external-access/
+  - /tech/running-software/best-practices/external-access/
 author_reviewed: false
 editor_reviewed: false
 ---
@@ -27,4 +28,4 @@ importantly, how they're *not*.
   where possible.
 
 The specific proxy and overlay tooling picks live under
-[Software Picks](/software/software-picks/).
+[Picking Software](/tech/software-picks/).

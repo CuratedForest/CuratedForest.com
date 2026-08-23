@@ -1,7 +1,7 @@
 ---
 title: Home Assistant
 type: docs
-weight: 7
+weight: 4
 author_reviewed: false
 editor_reviewed: false
 ---

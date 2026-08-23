@@ -1,7 +1,7 @@
 ---
 title: Kubernetes
 type: docs
-weight: 6
+weight: 5
 autoshrink: true
 aliases:
   - /tech/kubernetes/

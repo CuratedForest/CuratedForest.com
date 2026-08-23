@@ -1,10 +1,11 @@
 ---
-title: Software Picks
-weight: 1
+title: Picking Software
+weight: 6
 type: docs
 draft: false
 aliases:
   - /tech/running-software/software-picks/
+  - /software/software-picks/
 author_reviewed: false
 editor_reviewed: false
 ---
