@@ -26,10 +26,10 @@ If the first thing I'm thinking about is what does this server look like, the se
 
 The way I manage this is with Keycloak. You can absolutely go with another ID provider, there are plenty. I've tried a fair number of them but keep coming back to Keycloak for 2 main reasons
 - It does all the protocols. This is important in self hosting where you don't always get control of how the app authenticates.
-- It's backed by Redhat. This kind of enterprise support brings a lot in terms of security audits and speed in addressing critical vulnerabilities. 
+- It's backed by Redhat. This kind of enterprise support brings a lot in terms of security audits and speed in addressing critical vulnerabilities.
 
-## Same login for EVERYTHING
-This has a couple major benefits. 
+## Same login for EVERYTHING (SSO)
+This has a couple major benefits.
 
 The first is that sharing what you've created is easy. Users hate passwords, so don't give them more then 1. Or if you're friend betrays you, there is only 1 place you have to go to revoke access.
 
