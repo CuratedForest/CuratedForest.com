@@ -8,25 +8,11 @@ aliases:
 author_reviewed: false
 editor_reviewed: false
 ---
+This section is dedicated to all the practices around running and maintaining your own self-hosted services. They are a general collection of industry best practices and patterns. There are enough topics that they've been split into separate pages.
 
-The operational habits that keep a self-hosted stack healthy over time.
+[Backups](backups/_index.md) are the most important safety net you have, and even the best admins have to revert to a backup now and then.
 
-## Configuration
+Ease of [Updates](updates/_index.md) and dependency management practices can be the difference between new features for (almost) free and non-stop headaches.
 
-- **Everything in Git.** Cluster manifests, Helm values, and app config are
-  version-controlled so changes are reviewable and reversible.
-- **Declarative over imperative.** Describe the desired state; let the
-  orchestrator converge to it rather than hand-editing running systems.
+External Access is a place that needs a heavy eye towards security, and that many who self-host do in problematic ways. (Coming soon!)
 
-## Reliability
-
-- **Back up before you need it.** Snapshots are encrypted, deduplicated, and
-  pushed off-site (see [Kopia Backups](/software/shared/kopia-backups/)).
-- **Test restores.** A backup you've never restored is a hope, not a plan.
-- **Pin versions.** Reproducible builds beat "latest" surprises.
-
-## Security
-
-- **Least privilege.** Grant the minimum access a service needs.
-- **Secrets stay out of Git.** Use a secrets manager, not plaintext values.
-- **Patch regularly.** Boring, scheduled updates beat emergency ones.

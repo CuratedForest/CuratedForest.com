@@ -1,8 +1,9 @@
 ---
 title: Aeroponics
 weight: 1
-author_reviewed: false
+author_reviewed: true
 editor_reviewed: false
+todo: "- rewrite nasa bit"
 ---
 
 # What is Aeroponics

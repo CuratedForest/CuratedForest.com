@@ -238,3 +238,12 @@ Rebuilds them
 ```
 for f in *.dat; do [ -f "$f" ] && base="${f%.dat}" && [ ! -f "$STORAGE_PATH/$base.idx" ] && echo "Rebuilding $f..." && weed fix $f; done
 ```
+
+
+# Rollback Plan
+While most software running in the Curated Forest can be rolled back by just restoring a VM, with SeaweedFS, this will leave the data drives ahead of the index files. 
+
+This will prevent the volume servers from starting until the indexes are rebuilt with
+```
+weed fix collection_####.dat
+```

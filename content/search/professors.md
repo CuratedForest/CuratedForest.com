@@ -5,7 +5,9 @@ weight: 1
 draft: true
 author_reviewed: true
 editor_reviewed: false
-todo: "- Fix science in plant biology section."
+todo: |-
+  - Fix science in plant biology section.
+  - Insert custom teacher bits
 ---
 
 

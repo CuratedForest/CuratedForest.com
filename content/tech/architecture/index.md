@@ -35,13 +35,16 @@ The first is that sharing what you've created is easy. Users hate passwords, so 
 
 On a personal level this helps the admin too. When you're hosting a handful of services it's not to bad managing credentials, but when you go beyond 10 or so having a single login is SO nice.
 
-# Infrastructure as Code
-The third major consideration to my infrastructure is how to record it as code so it can be shared. With virtualization these days, you can _really_ record your entire stack.  It's not always practical or efficient to do it that way though. Like if I have to deploy 100 of anything, I'm going to turn it into code, but for the handful of VMs I create a year, my time is better served on strong documentation. 
+# IaC - Infrastructure as Code
+The third major consideration to my infrastructure is how to record it as code so it can be shared. With virtualization these days, you can _really_ record your entire stack. It's not always practical or efficient to do it that way though. Like if I have to deploy 100 of anything, I'm going to turn it into code, but for the handful of VMs I create a year, my time is better served on a consistent process and strong documentation.
+
+## Git
+Using git to support IaC is the way to go. So many tools support it by default and while the Curated Forest is currently hosted on GitHub, it may eventually move to something Forgejo based. This standard developer workflow also makes it easy to review and support AI based contributions.
 
 ## Kubernetes is the sweet spot
-This is really where Kubenetes really shines. Once it's running, you have a standard interface (via it's API and YAML structure) to manage any hardware or software component in the stack. Everything from video cards to network routes I handle with Kubernetes objects. It is usually a little tricky to get something working initially, but once it's working, because what's needed is completely in code, it can be reliably shared with others.
+Infrastructure as code backed by git is really where Kubenetes really shines. Once it's running, you have a standard interface (via it's API and YAML structure) to manage any hardware or software component in the stack. Everything from video cards to network routes can be handled with Kubernetes objects. It is usually a little tricky to get something working initially, but once it's going, because what's needed is completely in code, it can be reliably shared with others.
 
-## Use ArgoCD to sync changes
+## Use ArgoCD to sync changes (GitOps)
 The hardest part of any infrastructure as code setup is going to be what drives the changes and how. I've found ArgoCD to do that reasonably well. It takes git repos and helm charts and compiles them into Kubernetes object to deploy and manage. Kubernetes can get overwhelming with all it's objects and YAML and I find ArgoCD does a great job at not just managing the objects in the cluster, but visually representing what's going on so that an admin can diagnose problems easily.
 
 ## Where is the automation line?
